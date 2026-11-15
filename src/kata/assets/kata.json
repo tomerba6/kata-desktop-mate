@@ -1,0 +1,57 @@
+{
+  "image": "kata.png",
+  "frame": {
+    "w": 48,
+    "h": 48
+  },
+  "ground_y": 47,
+  "facing": "right",
+  "animations": {
+    "idle": {
+      "row": 0,
+      "frames": 6,
+      "fps": 5,
+      "loop": true
+    },
+    "walk": {
+      "row": 1,
+      "frames": 8,
+      "fps": 10,
+      "loop": true
+    },
+    "sit": {
+      "row": 2,
+      "frames": 6,
+      "fps": 4,
+      "loop": true
+    },
+    "sleep": {
+      "row": 3,
+      "frames": 6,
+      "fps": 3,
+      "loop": true
+    },
+    "happy": {
+      "row": 4,
+      "frames": 8,
+      "fps": 12,
+      "loop": false
+    },
+    "held": {
+      "row": 5,
+      "frames": 4,
+      "fps": 6,
+      "loop": true,
+      "anchor": [
+        22,
+        21
+      ]
+    },
+    "fall": {
+      "row": 6,
+      "frames": 2,
+      "fps": 8,
+      "loop": true
+    }
+  }
+}

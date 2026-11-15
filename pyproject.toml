@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kata-desktop-mate"
+version = "0.1.0"
+description = "Kata the fox: a pixel-art desktop mate for Windows."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # The core Qt modules only (QtCore, QtGui, QtWidgets). Still imported as "PySide6".
+    "PySide6-Essentials>=6.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "pillow>=10",   # only tools/make_sprites.py needs it
+]
+
+[project.gui-scripts]
+kata = "kata.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+kata = ["assets/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
