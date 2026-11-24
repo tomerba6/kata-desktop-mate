@@ -1,6 +1,18 @@
 # Dev tooling before M1
 
-**Status:** active · **Branch:** `dev-tooling` off `main` at `a6999e6` · **Started:** 2026-11-24
+**Status:** done · **Branch:** `dev-tooling` off `main` at `a6999e6` · **Started:** 2026-11-24
+
+> **Closed 2026-11-24.** All nine steps shipped, plus one extra check (see Deviations).
+>
+> **Measured at the close:**
+> - 14 tests pass; `sheet.py` is at 100% under the coverage gate.
+> - ruff and mypy (strict) are clean.
+> - The mutation run kills all 19 mutants of `sheet.py`.
+> - A clean clone, installed by the README into a fresh Python 3.14 venv, passes the whole
+>   chain, and every file is LF.
+> - CI was green on 3.14 and 3.15 for step 8's push. The last two commits (`ca41a12`,
+>   `d24b5b3`) get their CI run on the next push.
+> - `src/` is unchanged since your preview check in step 3.
 
 ## Context
 
@@ -548,3 +560,9 @@ Once step 9 is in:
     - `sprites.py` in place of `sheet.py`: it named `kata.sheet` as missing;
     - both listed: it named `kata.sprites` as a Qt module.
   - 14 passed; ruff, mypy and the gate are clean; cosmic-ray still loads its config.
+  - Committed as `d24b5b3`.
+- **2026-11-24:** Plan verification.
+  - A clean clone at `d24b5b3`, with a fresh Python 3.14.6 venv installed by the README, passes
+    ruff, mypy, 14 tests and the 100% gate, and has LF line endings throughout.
+  - `git diff 68b89ab HEAD -- src/` is empty, so your step 3 preview check still holds.
+  - Plan closed.
