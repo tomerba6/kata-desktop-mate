@@ -9,7 +9,7 @@ Right now this repo is the starting point: the sprites, a sprite loader and a pr
 ## Quick start (PowerShell)
 
 ```powershell
-py --version                                   # needs Python 3.10 or newer
+py --version                                   # needs Python 3.14 or newer
 py -m venv .venv
 .venv\Scripts\python -m pip install -e ".[dev]"
 .venv\Scripts\python -m kata                   # sprite preview

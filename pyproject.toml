@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kata-desktop-mate"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Kata the fox: a pixel-art desktop mate for Windows."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
     # The core Qt modules only (QtCore, QtGui, QtWidgets). Still imported as "PySide6".
     "PySide6-Essentials>=6.8",
@@ -22,6 +22,10 @@ dev = [
 
 [project.gui-scripts]
 kata = "kata.__main__:main"
+
+[tool.setuptools.dynamic]
+# The one copy of the version is kata.__version__; the package metadata is read from it.
+version = { attr = "kata.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

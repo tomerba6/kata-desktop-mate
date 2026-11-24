@@ -1,6 +1,6 @@
 # Kata desktop mate
 
-A pixel-art desktop pet for Windows 10/11. Python 3.10+, PySide6 (Qt 6 Widgets). The roadmap is in BRIEF.md; each milestone gets its own plan in `docs/plans/` and is built one at a time.
+A pixel-art desktop pet for Windows 10/11. Python 3.14+, PySide6 (Qt 6 Widgets). The roadmap is in BRIEF.md; each milestone gets its own plan in `docs/plans/` and is built one at a time.
 
 ## Commands (PowerShell, from the repo root)
 

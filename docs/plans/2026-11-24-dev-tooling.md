@@ -94,18 +94,18 @@ Git stops rewriting line endings, the version has one home, and the claimed Pyth
 one used. Files: `.gitattributes`, `.editorconfig`, `pyproject.toml`, `README.md`, `CLAUDE.md`,
 `BRIEF.md`.
 
-- [ ] `.gitattributes`: `* text=auto eol=lf` and `*.png binary`, then `git add --renormalize .`
-- [ ] `.editorconfig`:
+- [x] `.gitattributes`: `* text=auto eol=lf` and `*.png binary`, then `git add --renormalize .`
+- [x] `.editorconfig`:
       - UTF-8, LF, a final newline and trimmed whitespace for every file;
       - Python indented 4 with a maximum line length of 110, matching ruff;
       - YAML indented 2;
       - Markdown keeps trailing whitespace.
-- [ ] `pyproject.toml`: drop the static `version` and add `dynamic = ["version"]` with
+- [x] `pyproject.toml`: drop the static `version` and add `dynamic = ["version"]` with
       `[tool.setuptools.dynamic] version = {attr = "kata.__version__"}`. Set
       `requires-python = ">=3.14"`.
-- [ ] Reinstall (`.venv\Scripts\python -m pip install -e ".[dev]"`). ruff now targets
+- [x] Reinstall (`.venv\Scripts\python -m pip install -e ".[dev]"`). ruff now targets
       Python 3.14, so fix whatever new findings it reports.
-- [ ] Change "3.10" to "3.14" in README.md (Quick start), CLAUDE.md (line 3) and BRIEF.md (line 3).
+- [x] Change "3.10" to "3.14" in README.md (Quick start), CLAUDE.md (line 3) and BRIEF.md (line 3).
 
 **Verify (me):**
 - `git ls-files --eol` → every text file shows `i/lf` and `attr/text=auto eol=lf`.
@@ -188,15 +188,22 @@ Files: `tests/test_no_qt.py` (new), `pyproject.toml`, `CLAUDE.md`.
 - [ ] Add `coverage>=7.17` to the `dev` extra. Add `[tool.coverage.run] branch = true`,
       `source = ["kata"]`, and `[tool.coverage.report] include = ["*/kata/sheet.py"]`,
       `fail_under = 90`, `show_missing = true`.
-- [ ] Add the two coverage commands to CLAUDE.md's Commands list.
+- [ ] Add the coverage commands to CLAUDE.md's Commands list: run, report, and the HTML report
+      (`coverage html`, then open `htmlcov\index.html`). Add `htmlcov/` to `.gitignore`.
+- [ ] Check that `coverage html --include="*/kata/*" -d htmlcov-all` really overrides the
+      config's `include` and shows the Qt files too. If it does, document it next to the HTML
+      command; if not, find what does and document that.
 
 **Verify (me):**
 - `.venv\Scripts\python -m coverage run -m pytest` → all passed.
 - `.venv\Scripts\python -m coverage report` → `sheet.py` and its percentage, exit code 0.
+- `.venv\Scripts\python -m coverage html` → `htmlcov\index.html` lists `sheet.py` with the same
+  percentage; `git status` doesn't show `htmlcov/`.
 - Add a temporary `from PySide6 import QtCore` to `sheet.py` → `test_no_qt` fails and names it;
   revert.
 
-**Verify (you):** nothing beyond the tests
+**Verify (you):** open `htmlcov\index.html` and click through to `sheet.py`: lines coloured as
+run, missed or partly run.
 **Commit:** `test: enforce the no-Qt boundary and gate its coverage`
 
 ### 5. Golden-file test for the sprite sheet
@@ -279,7 +286,11 @@ Files: `.github/workflows/ci.yml` (new).
       - `pip install -e ".[dev]"`;
       - ruff check and `ruff format --check`;
       - mypy;
-      - `coverage run -m pytest --hypothesis-profile=ci`, then `coverage report`.
+      - `coverage run -m pytest --hypothesis-profile=ci`;
+      - `coverage html`, run even when the tests failed;
+      - `coverage report`, which enforces the gate;
+      - upload `htmlcov/` with `actions/upload-artifact@v7` on every run, pass or fail, as
+        `coverage-html-<python version>`, kept 7 days.
 
       It runs on every push, with `concurrency` cancelling an older run on the same branch and
       `permissions: contents: read`. Mutation testing stays out of CI.
@@ -289,8 +300,9 @@ Files: `.github/workflows/ci.yml` (new).
       asking, and note it under Deviations.
 
 **Verify (me):** locally, every command passes. On GitHub, both matrix jobs are green, read with
-`gh run view`.
-**Verify (you):** optional: the run in the repo's Actions tab.
+`gh run view`, and each run lists its `coverage-html-*` artifact.
+**Verify (you):** download one `coverage-html-*` artifact from the run's page in the Actions tab
+and open its `index.html`.
 **Commit:** `ci: lint, types, tests and the coverage gate on every push`
 
 ### 9. Docs and memory sync
@@ -323,7 +335,7 @@ Files: `.github/workflows/ci.yml` (new).
     `mypy`, `cosmic-ray`), coverage and mypy config.
   - `src/kata/sprites.py` and `src/kata/preview.py`: imports after the split.
   - `tests/test_sprites.py`: pinning tests in step 2; its pure tests move out in step 3.
-  - `.gitignore`: `.hypothesis/` and cosmic-ray's session file.
+  - `.gitignore`: `.hypothesis/`, `htmlcov/` and cosmic-ray's session file.
   - `README.md`, `CLAUDE.md`, `BRIEF.md`.
 - **New:** `.gitattributes`, `.editorconfig`, `src/kata/sheet.py`, `tests/conftest.py`,
   `tests/test_sheet.py`, `tests/test_no_qt.py`, `tests/test_make_sprites.py`, `cosmic-ray.toml`,
@@ -371,7 +383,7 @@ Once step 9 is in:
 ## Progress
 
 - [x] **Plan approved** (2026-11-24)
-- [ ] **1. LF line endings, one version, Python 3.14**
+- [x] **1. LF line endings, one version, Python 3.14** (2026-11-24)
 - [ ] **2. Hypothesis, and pin the sheet reader before it moves**
 - [ ] **3. Move the sheet reader into a no-Qt `sheet.py`**
 - [ ] **4. The no-Qt boundary test and the coverage gate**
@@ -388,3 +400,13 @@ Once step 9 is in:
 ### Session log
 
 - **2026-11-24:** Plan approved. Baseline: 4 tests passing, HEAD `a6999e6`.
+- **2026-11-24:** Added at your request, before step 1: the HTML coverage report (step 4), and CI
+  uploading it as an artifact (step 8). My choice: CI uploads it on every run, not only on
+  failure, so coverage can be read after a green run too.
+- **2026-11-24:** Step 1 built.
+  - All 13 tracked text files are LF in the index and the working copy under `text=auto eol=lf`,
+    and the 2 PNGs are binary. `git add --renormalize .` changed no line endings.
+  - Both version readings say `0.1.0`.
+  - ruff targets Python 3.14 now and reports nothing new.
+  - My choices: `.editorconfig` indents TOML by 4 (as `pyproject.toml` already is), and it gives
+    `*.png` an explicit `binary`.

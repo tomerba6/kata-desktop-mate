@@ -1,6 +1,6 @@
 # Kata desktop mate: build brief
 
-Kata is a pixel-art fox that lives on the Windows desktop. This brief is the roadmap for building it in Claude Code, one milestone at a time. Python 3.10+, PySide6 (Qt 6 Widgets), Windows 10/11.
+Kata is a pixel-art fox that lives on the Windows desktop. This brief is the roadmap for building it in Claude Code, one milestone at a time. Python 3.14+, PySide6 (Qt 6 Widgets), Windows 10/11.
 
 ## What the finished app does
 
