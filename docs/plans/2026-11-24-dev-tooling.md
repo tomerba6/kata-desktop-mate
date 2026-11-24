@@ -177,20 +177,20 @@ missing from the gate, and so does the gate's coverage dropping under 90.
 
 Files: `tests/test_no_qt.py` (new), `pyproject.toml`, `CLAUDE.md`.
 
-- [ ] Write the failing test, `tests/test_no_qt.py`:
+- [x] Write the failing test, `tests/test_no_qt.py`:
       - every module under `src/kata` is imported in a fresh interpreter, which classifies it as
         Qt or no-Qt;
       - the coverage `include` list must equal exactly the set of no-Qt modules;
       - CLAUDE.md's "no Qt" Layout marks must agree for every module that exists;
       - a guard on the scanner itself: it finds `sheet` as no-Qt and `sprites` as Qt.
-- [ ] Run it and see it fail for the right reason: `pyproject.toml` has no coverage config, so
+- [x] Run it and see it fail for the right reason: `pyproject.toml` has no coverage config, so
       `kata.sheet` is reported as missing from the gate.
-- [ ] Add `coverage>=7.17` to the `dev` extra. Add `[tool.coverage.run] branch = true`,
+- [x] Add `coverage>=7.17` to the `dev` extra. Add `[tool.coverage.run] branch = true`,
       `source = ["kata"]`, and `[tool.coverage.report] include = ["*/kata/sheet.py"]`,
       `fail_under = 90`, `show_missing = true`.
-- [ ] Add the coverage commands to CLAUDE.md's Commands list: run, report, and the HTML report
+- [x] Add the coverage commands to CLAUDE.md's Commands list: run, report, and the HTML report
       (`coverage html`, then open `htmlcov\index.html`). Add `htmlcov/` to `.gitignore`.
-- [ ] Check that `coverage html --include="*/kata/*" -d htmlcov-all` really overrides the
+- [x] Check that `coverage html --include="*/kata/*" -d htmlcov-all` really overrides the
       config's `include` and shows the Qt files too. If it does, document it next to the HTML
       command; if not, find what does and document that.
 
@@ -287,7 +287,8 @@ Files: `.github/workflows/ci.yml` (new).
       - ruff check and `ruff format --check`;
       - mypy;
       - `coverage run -m pytest --hypothesis-profile=ci`;
-      - `coverage html`, run even when the tests failed;
+      - `coverage html --fail-under=0`, run even when the tests failed (`coverage html` applies
+        the gate too, so `--fail-under=0` leaves the gate to `coverage report` alone);
       - `coverage report`, which enforces the gate;
       - upload `htmlcov/` with `actions/upload-artifact@v7` on every run, pass or fail, as
         `coverage-html-<python version>`, kept 7 days.
@@ -386,8 +387,8 @@ Once step 9 is in:
 - [x] **1. LF line endings, one version, Python 3.14** (2026-11-24)
 - [x] **2. Hypothesis, and pin the sheet reader before it moves** (2026-11-24)
 - [x] **3. Move the sheet reader into a no-Qt `sheet.py`** (2026-11-24)
-- [ ] **4. The no-Qt boundary test and the coverage gate**
-- [ ] **5. Golden-file test for the sprite sheet**
+- [x] **4. The no-Qt boundary test and the coverage gate** (2026-11-24)
+- [ ] **5. Golden-file test for the sprite sheet** *(in progress)*
 - [ ] **6. Type checking with mypy, strict**
 - [ ] **7. Mutation testing with cosmic-ray**
 - [ ] **8. CI on GitHub Actions**
@@ -429,3 +430,20 @@ Once step 9 is in:
       `load_frames`, which still has no test. That gap is the one Qt function left untested, and
       the mutation run in step 7 covers only the no-Qt modules.
   - Your check: the preview plays all seven animations. Pass.
+- **2026-11-24:** Step 4 built.
+  - Written first, the test failed naming `kata.sheet` as missing from the gate.
+  - coverage 7.17.5 is installed. 9 passed under coverage, and `sheet.py` measured 26
+    statements, 0 missed: 100%.
+  - It also measured 0 branches: coverage.py counts only jumps between lines, so the one-line
+    `... if "anchor" in a else None` is not a branch to it. Mutation testing (step 7) checks that
+    kind of choice.
+  - `coverage report --include="*/kata/*"` does override the config, and lists all 5 files at
+    21% (exit code 2, under the gate).
+  - With a Qt import planted in `sheet.py`, all three tests failed naming `kata.sheet`.
+  - My choices:
+    - `.coverage` (the data file) and `htmlcov*/` are ignored;
+    - the all-files HTML command carries `--fail-under=0`, because `coverage html` applies the
+      gate too and would exit 2;
+    - for the same reason, step 8's CI HTML step now uses `--fail-under=0`, leaving the gate to
+      `coverage report`.
+  - Your check: `htmlcov\index.html` shows `sheet.py` at 100%. Pass.

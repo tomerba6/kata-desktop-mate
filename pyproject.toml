@@ -19,6 +19,7 @@ dev = [
     "ruff>=0.6",
     "pillow>=10",   # only tools/make_sprites.py needs it
     "hypothesis>=6.170",
+    "coverage>=7.17",
 ]
 
 [project.gui-scripts]
@@ -36,6 +37,17 @@ kata = ["assets/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["kata"]
+
+[tool.coverage.report]
+# The gate: the no-Qt modules, and only those. tests/test_no_qt.py fails if this list and what
+# the modules really import disagree. The Qt modules are checked by hand instead (CLAUDE.md).
+include = ["*/kata/sheet.py"]
+fail_under = 90
+show_missing = true
 
 [tool.ruff]
 line-length = 110
