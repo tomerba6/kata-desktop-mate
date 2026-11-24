@@ -280,7 +280,7 @@ Every push runs the whole check on the Pythons kata supports.
 
 Files: `.github/workflows/ci.yml` (new).
 
-- [ ] One `check` job on `windows-latest`, with a matrix of Python 3.14 and 3.15 and
+- [x] One `check` job on `windows-latest`, with a matrix of Python 3.14 and 3.15 and
       `fail-fast: false`. Steps:
       - checkout and setup-python (with pip caching);
       - `pip install -e ".[dev]"`;
@@ -295,7 +295,7 @@ Files: `.github/workflows/ci.yml` (new).
 
       It runs on every push, with `concurrency` cancelling an older run on the same branch and
       `permissions: contents: read`. Mutation testing stays out of CI.
-- [ ] Run the same commands locally in the `.venv`. Stop uncommitted as usual.
+- [x] Run the same commands locally in the `.venv`. Stop uncommitted as usual.
 - [ ] After your ok and the commit: ask before `git push -u origin dev-tooling`, then
       `gh run watch`. If a job fails, fix it in a follow-up commit (`ci: ...`), push again after
       asking, and note it under Deviations.
@@ -391,7 +391,7 @@ Once step 9 is in:
 - [x] **5. Golden-file test for the sprite sheet** (2026-11-24)
 - [x] **6. Type checking with mypy, strict** (2026-11-24)
 - [x] **7. Mutation testing with cosmic-ray** (2026-11-24)
-- [ ] **8. CI on GitHub Actions**
+- [x] **8. CI on GitHub Actions** (2026-11-24)
 - [ ] **9. Docs and memory sync**
 
 ### Deviations
@@ -504,3 +504,14 @@ Once step 9 is in:
     - 13 passed. Mutants rerun: 19 of 19 killed, in 33 s.
     - Still open, outside this plan: `frozen` doesn't stop entries being added to or removed from
       `SheetInfo.animations`.
+- **2026-11-24:** Step 8 built (local part).
+  - On PyPI, every compiled dependency has a standard `cp315-cp315` Windows wheel, except
+    `frozenlist`, which has a pure-Python wheel. So 3.15 shouldn't need to compile anything.
+  - Locally, each of the workflow's commands exits 0.
+  - The YAML isn't parsed locally (PyYAML isn't installed); GitHub's run is that check.
+  - My choices:
+    - one command per step: pwsh, the default shell on Windows runners, takes a step's exit
+      code from its last command only;
+    - `if: ${{ !cancelled() }}` rather than `always()` for the HTML report and its upload, so a
+      cancelled run stops;
+    - pip caching is keyed on `pyproject.toml`.

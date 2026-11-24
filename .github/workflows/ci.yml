@@ -1,0 +1,71 @@
+# What this checks on every push, and what it can't.
+#
+# It runs everything that needs no screen: ruff, mypy, the tests (Hypothesis in its repeatable ci
+# profile) and the coverage gate on the no-Qt modules. A green run says nothing about how Kata
+# looks or behaves on a desktop; that is what the "Check by hand" lists in BRIEF.md are for.
+# Mutation testing is slow and run by hand (CLAUDE.md), so it stays out of here.
+#
+# One command per step on purpose: on Windows runners the default shell is pwsh, which only
+# fails a step on the exit code of its last command, so a failing first line would be missed.
+name: CI
+
+on:
+  push:
+
+# A newer push to the same branch makes the run already in flight pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # Kata is Windows-only.
+    runs-on: windows-latest
+    strategy:
+      # Let both Pythons finish, so one failing doesn't hide the other's result.
+      fail-fast: false
+      matrix:
+        # The minimum in pyproject.toml's requires-python, and the newest stable release.
+        python-version: ["3.14", "3.15"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+
+      - name: Lint
+        run: python -m ruff check .
+
+      - name: Format
+        run: python -m ruff format --check .
+
+      - name: Types
+        run: python -m mypy
+
+      - name: Tests
+        run: python -m coverage run -m pytest --hypothesis-profile=ci
+
+      # Written even when the tests failed. The gate is off here so the next step alone enforces it.
+      - name: Coverage report (HTML)
+        if: ${{ !cancelled() }}
+        run: python -m coverage html --fail-under=0
+
+      - name: Coverage gate
+        run: python -m coverage report
+
+      - name: Upload the HTML coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-html-${{ matrix.python-version }}
+          path: htmlcov/
+          retention-days: 7
