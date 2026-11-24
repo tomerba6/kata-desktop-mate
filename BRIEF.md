@@ -62,24 +62,24 @@ Each section below is the input for that milestone's staged plan. When the miles
 
 ### M1 Kata on the desktop
 
-**Goal:** Kata stands on the taskbar in a window that doesn't look like a window.
+**Goal:** Kata stands on the taskbar, or on the screen's bottom edge when the taskbar auto-hides, in a window that doesn't look like a window.
 
 **Build**
 
 - `PetWindow(QWidget)` with flags `Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool` and attributes `Qt.WidgetAttribute.WA_TranslucentBackground` and `Qt.WidgetAttribute.WA_ShowWithoutActivating`. `paintEvent` draws the current frame and nothing else: no background fill.
 - `Animator` in `animator.py`, plain Python: `play(name)` starts an animation at frame 0, `advance(dt)` moves time on, `frame` is the current frame index, and a non-looping animation stops on its last frame and sets `finished`. `PetWindow` owns the `QTimer` that calls `advance` and repaints when the frame changes.
 - A whole-number scale, default 3, so the window is 144x144.
-- Place Kata on the primary screen with the feet on the bottom edge of `QScreen.availableGeometry()`, which is the top of the taskbar. Use `ground_y`, not the frame height.
+- Place Kata on the primary screen with the feet on the floor: the first row below `QScreen.availableGeometry()`, which is the top of the taskbar. When the taskbar auto-hides, Qt counts the whole screen as available, so the floor is the screen's bottom edge, and the taskbar covers the paws while it is showing. Use `ground_y`, not the frame height.
 - `python -m kata` now starts the pet. The preview stays available as `python -m kata.preview`.
 - A temporary way out: right-click, then Quit. M5 replaces it with the tray menu.
-- A developer switch: `KATA_LOG=1` in the environment prints timestamped events to standard out. In M1 that is the screen, its available geometry and the feet point when Kata is placed, so the paws-on-the-taskbar check can also be read as numbers. Whether a switch is on is a pure function in `switches.py` that is given the environment; later milestones log their own events.
+- A developer switch: `KATA_LOG=1` in the environment prints timestamped events to standard out. In M1 that is the screen, its available geometry and the feet point when Kata is placed, so the paws-on-the-floor check can also be read as numbers. Whether a switch is on is a pure function in `switches.py` that is given the environment; later milestones log their own events.
 
 **Check by hand**
 
 - No title bar, no border, no taskbar button.
 - Kata stays above other windows, and appearing does not take keyboard focus from the app you are typing in.
 - Clicking a transparent pixel inside Kata's square reaches the window underneath.
-- The paws sit exactly on the taskbar's top edge.
+- The paws sit exactly on the floor: the taskbar's top edge, or the screen's bottom edge when the taskbar auto-hides.
 
 **Tests**
 
@@ -90,6 +90,8 @@ Each section below is the input for that milestone's staged plan. When the miles
 **Watch out**
 
 - Work out the frame as `floor(elapsed * fps + 1e-4)` on the accumulated time, not by dividing by a stored `1 / fps`. A frame boundary is not exact in floating point, so a bare floor can stay on the old frame for one tick, and a stored `1 / 12` drifts over a long session.
+- Tick faster than the frame rate. A timer at exactly the frame interval fires on the frame boundaries, and Windows fires it a few milliseconds early or late, so a frame shows twice and the next is skipped: 3 to 5 times in 30 seconds at 200 ms, measured. M1 ticks at about 60 Hz and repaints only when the frame changes.
+- `QRect.bottom()` is `y + height - 1`, the last row inside the rectangle, one row above the floor. The floor is `y + height`; build the placement from `x()`, `y()`, `width()` and `height()` only.
 - On Windows a frameless translucent Qt window normally lets clicks through its fully transparent pixels. If your check shows clicks being swallowed, set a mask per frame with `setMask(pixmap.mask())`.
 - With display scaling at 125% or 150%, Qt measures in device-independent pixels and the art can look uneven. Note what you see and leave the fix for M8 unless it is ugly.
 

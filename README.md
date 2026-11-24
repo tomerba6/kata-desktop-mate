@@ -14,7 +14,8 @@ Right now this repo is the starting point: the sprites, a sprite loader and a pr
 py --version                                   # needs Python 3.14 or newer
 py -m venv .venv
 .venv\Scripts\python -m pip install -e ".[dev]"
-.venv\Scripts\python -m kata                   # sprite preview
+.venv\Scripts\python -m kata                   # Kata on the desktop; right-click it, then Quit
+.venv\Scripts\python -m kata.preview           # the sprite preview
 .venv\Scripts\python -m pytest
 .venv\Scripts\python -m ruff check .
 .venv\Scripts\python -m mypy                   # types, strict

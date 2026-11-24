@@ -1,9 +1,9 @@
-"""Entry point: `python -m kata`.
+"""Entry point: `python -m kata` puts Kata on the desktop.
 
-For now this opens the sprite preview. Milestone 1 swaps it for the real desktop window.
+The sprite preview is `python -m kata.preview`.
 """
 
-from kata.preview import main
+from kata.app import main
 
 if __name__ == "__main__":
     main()
