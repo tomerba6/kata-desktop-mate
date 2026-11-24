@@ -15,7 +15,7 @@ Kata is a pixel-art fox that lives on the Windows desktop. This brief is the roa
 ## Progress
 
 - [x] M0 Run the starter
-- [ ] M1 Kata on the desktop
+- [x] M1 Kata on the desktop
 - [ ] M2 Pick up, carry, drop
 - [ ] M3 Wander, sit, sleep
 - [ ] M4 React to a click
@@ -34,7 +34,7 @@ Kata is a pixel-art fox that lives on the Windows desktop. This brief is the roa
    ```
 
 3. For every later milestone, type `/staged-plan the next unticked milestone in BRIEF.md`. It asks its questions, then saves a plan of one-commit steps in `docs/plans/`.
-4. Say "next" to build one step. Claude Code can start the app but cannot see your desktop, so answer each check with pass or fail and what you saw.
+4. Say "next" to build one step. Claude Code can start the app and measure some of what is on screen with its run-kata skill, but it cannot see your desktop, so it asks you about the rest. Answer each check with pass or fail and what you saw.
 5. When the last step is committed, it ticks the milestone above and proposes a pull request into `main`, showing you its title and description first.
 
 If a session gets long, start a new one; the plan file carries the state.
@@ -64,36 +64,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 
 **Goal:** Kata stands on the taskbar, or on the screen's bottom edge when the taskbar auto-hides, in a window that doesn't look like a window.
 
-**Build**
-
-- `PetWindow(QWidget)` with flags `Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool` and attributes `Qt.WidgetAttribute.WA_TranslucentBackground` and `Qt.WidgetAttribute.WA_ShowWithoutActivating`. `paintEvent` draws the current frame and nothing else: no background fill.
-- `Animator` in `animator.py`, plain Python: `play(name)` starts an animation at frame 0, `advance(dt)` moves time on, `frame` is the current frame index, and a non-looping animation stops on its last frame and sets `finished`. `PetWindow` owns the `QTimer` that calls `advance` and repaints when the frame changes.
-- A whole-number scale, default 3, so the window is 144x144.
-- Place Kata on the primary screen with the feet on the floor: the first row below `QScreen.availableGeometry()`, which is the top of the taskbar. When the taskbar auto-hides, Qt counts the whole screen as available, so the floor is the screen's bottom edge, and the taskbar covers the paws while it is showing. Use `ground_y`, not the frame height.
-- `python -m kata` now starts the pet. The preview stays available as `python -m kata.preview`.
-- A temporary way out: right-click, then Quit. M5 replaces it with the tray menu.
-- A developer switch: `KATA_LOG=1` in the environment prints timestamped events to standard out. In M1 that is the screen, its available geometry and the feet point when Kata is placed, so the paws-on-the-floor check can also be read as numbers. Whether a switch is on is a pure function in `switches.py` that is given the environment; later milestones log their own events.
-
-**Check by hand**
-
-- No title bar, no border, no taskbar button.
-- Kata stays above other windows, and appearing does not take keyboard focus from the app you are typing in.
-- Clicking a transparent pixel inside Kata's square reaches the window underneath.
-- The paws sit exactly on the floor: the taskbar's top edge, or the screen's bottom edge when the taskbar auto-hides.
-
-**Tests**
-
-- `Animator`: a looping animation wraps to frame 0, a one-shot stops on its last frame and sets `finished`, `play` restarts at frame 0, and a time that reaches a frame boundary through many small `advance` steps shows the new frame, not the old one.
-- `switches`: on for `1` or `true` in any case; off when unset or set to anything else.
-- Property tests (Hypothesis): for any sequence of `advance(dt)` steps, the frame index stays in range, and a one-shot animation never moves past its last frame.
-
-**Watch out**
-
-- Work out the frame as `floor(elapsed * fps + 1e-4)` on the accumulated time, not by dividing by a stored `1 / fps`. A frame boundary is not exact in floating point, so a bare floor can stay on the old frame for one tick, and a stored `1 / 12` drifts over a long session.
-- Tick faster than the frame rate. A timer at exactly the frame interval fires on the frame boundaries, and Windows fires it a few milliseconds early or late, so a frame shows twice and the next is skipped: 3 to 5 times in 30 seconds at 200 ms, measured. M1 ticks at about 60 Hz and repaints only when the frame changes.
-- `QRect.bottom()` is `y + height - 1`, the last row inside the rectangle, one row above the floor. The floor is `y + height`; build the placement from `x()`, `y()`, `width()` and `height()` only.
-- On Windows a frameless translucent Qt window normally lets clicks through its fully transparent pixels. If your check shows clicks being swallowed, set a mask per frame with `setMask(pixmap.mask())`.
-- With display scaling at 125% or 150%, Qt measures in device-independent pixels and the art can look uneven. Note what you see and leave the fix for M8 unless it is ugly.
+Done. The plan, with its decisions, what was measured on the way and the watch-outs found: [docs/plans/2026-11-24-m1-window.md](docs/plans/2026-11-24-m1-window.md).
 
 ### M2 Pick up, carry, drop
 

@@ -4,7 +4,7 @@
 
 Kata is a pixel-art fox that will live on your Windows desktop: standing on the taskbar, wandering, sitting, napping, hopping when clicked, and riding on other windows.
 
-Right now this repo is the starting point: the sprites, a sprite loader and a preview window. The rest gets built milestone by milestone in Claude Code. The roadmap is in [BRIEF.md](BRIEF.md).
+Right now Kata stands at the bottom of your screen and idles, in a window that doesn't look like one: no title bar, no border, no taskbar button, see-through around the fox and always on top. Right-click it, then Quit, to close it. The rest gets built milestone by milestone in Claude Code. The roadmap is in [BRIEF.md](BRIEF.md).
 
 ![Kata's animations](docs/sprites-preview.png)
 
@@ -37,15 +37,24 @@ Calling `.venv\Scripts\python` directly means you never have to activate the vir
 | `CLAUDE.md` | Project rules Claude Code reads at the start of every session |
 | `src/kata/assets/kata.png` | The sprite sheet: 7 animations, 48x48 frames |
 | `src/kata/assets/kata.json` | Which row is which animation, frame counts, speeds |
+| `src/kata/app.py` | Starts Kata: loads the frames, plays idle, places the window. `python -m kata` runs it |
+| `src/kata/window.py` | Kata's window: frameless, see-through, on top; draws the current frame |
+| `src/kata/animator.py` | Which frame to show, from elapsed time; looping and one-shot animations. No Qt |
+| `src/kata/geometry.py` | Where the window goes: the floor, the start spot, the window corner. No Qt |
+| `src/kata/switches.py` | Developer switches such as `KATA_LOG`, and its log lines. No Qt |
 | `src/kata/sheet.py` | Reads the JSON: frame size, ground line, animations. No Qt |
 | `src/kata/sprites.py` | Cuts the sheet into frames |
-| `src/kata/preview.py` | A plain window that plays each animation |
+| `src/kata/preview.py` | A plain window that plays each animation. `python -m kata.preview` runs it |
+| `tests/test_animator.py`, `test_geometry.py`, `test_switches.py` | Tests for those three modules; the animator and geometry ones include Hypothesis property tests |
 | `tests/test_sheet.py` | Checks that the JSON is read correctly |
 | `tests/test_sprites.py` | Checks that the JSON matches the PNG |
 | `tests/test_make_sprites.py` | Checks that the committed sheet is what `make_sprites.py` draws |
 | `tests/test_no_qt.py` | Checks that the no-Qt modules import no Qt, and that the coverage gate and the mutation run cover exactly them |
+| `tests/test_inspect_kata.py` | Checks the pure helpers of `inspect_kata.py` |
 | `tests/conftest.py` | Hypothesis profiles, including the repeatable `ci` one |
 | `tools/make_sprites.py` | Draws the sprite sheet from code |
+| `tools/inspect_kata.py` | Measures Kata on the real desktop: window styles, focus, click-through, paws on the floor. Read-only |
+| `.claude/skills/run-kata/SKILL.md` | Tells Claude Code when and how to use `inspect_kata.py` |
 | `docs/sprites-preview.png` | Enlarged contact sheet of every frame |
 | `docs/plans/` | One plan per milestone, with its steps, decisions and session log |
 | `.github/workflows/ci.yml` | CI: lint, types, tests and the coverage gate on every push |
