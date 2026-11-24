@@ -15,7 +15,7 @@
 # - The ci profile makes Hypothesis use the same inputs on every run, so a mutant's outcome
 #   doesn't depend on luck.
 [cosmic-ray]
-module-path = ["src/kata/sheet.py"]
+module-path = ["src/kata/animator.py", "src/kata/geometry.py", "src/kata/sheet.py", "src/kata/switches.py"]
 timeout = 60.0
 excluded-modules = []
 test-command = '.venv\\Scripts\\python.exe -m pytest -x -q -p no:cacheprovider --hypothesis-profile=ci'

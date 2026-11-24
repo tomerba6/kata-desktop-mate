@@ -47,7 +47,7 @@ source = ["kata"]
 [tool.coverage.report]
 # The gate: the no-Qt modules, and only those. tests/test_no_qt.py fails if this list and what
 # the modules really import disagree. The Qt modules are checked by hand instead (CLAUDE.md).
-include = ["*/kata/sheet.py"]
+include = ["*/kata/animator.py", "*/kata/geometry.py", "*/kata/sheet.py", "*/kata/switches.py"]
 fail_under = 90
 show_missing = true
 
