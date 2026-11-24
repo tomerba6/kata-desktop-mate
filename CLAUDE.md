@@ -19,7 +19,7 @@ A pixel-art desktop pet for Windows 10/11. Python 3.14+, PySide6 (Qt 6 Widgets).
 - Read the Progress list in BRIEF.md to find the current milestone. Work on that one only.
 - M0 is a checklist in BRIEF.md. Every later milestone starts with `/staged-plan`, with the milestone's section in BRIEF.md as its input. The plan's "How to work this plan" section sets the rules for steps, tests, stops and commits.
 - You can start the app but you cannot see my desktop. After any change that affects what is on screen, list the exact things for me to check by hand and ask for pass or fail on each, with what I saw. Wait for my answer before going on.
-- A milestone is done when its plan's last step is committed, its "Check by hand" items pass, and ruff, mypy, the tests with the coverage gate, and CI on the milestone branch are all green. From M2 on, a mutation run on the no-Qt modules must also end with every surviving mutant killed or explained in the plan's Session log. Then tick it in BRIEF.md, cut its section there down to the goal and a link to the plan, and propose the merge to `main`.
+- A milestone is done when its plan's last step is committed, its "Check by hand" items pass, and ruff, mypy, the tests with the coverage gate, and CI on the milestone branch are all green. From M2 on, a mutation run on the no-Qt modules must also end with every surviving mutant killed or explained in the plan's Session log. Then tick it in BRIEF.md, cut its section there down to the goal and a link to the plan, and propose the pull request that merges it into `main`.
 - If a Qt or Win32 call behaves differently from what BRIEF.md expects, say so and update the brief rather than working around it silently.
 
 ## Architecture rules
@@ -61,7 +61,7 @@ tests/
 - Type hints on everything, dataclasses for plain data, `pathlib` for paths.
 - ruff for lint and format, mypy in strict mode for types (settings for both in pyproject.toml). pytest for tests, files named `tests/test_<module>.py`; `tests/test_no_qt.py` checks the no-Qt rule itself.
 - Conventional Commits: `feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`.
-- One branch per milestone (`m1-window`, `m2-drag`), merged to `main` when the milestone is done.
+- One branch per milestone (`m1-window`, `m2-drag`). It reaches `main` through a pull request once its CI is green, merged with "Create a merge commit". Squash would collapse the step commits that the plan refers to, and rebase would leave no record of the PR. Show me the PR's title and description before opening it, since they are public.
 
 ## References
 

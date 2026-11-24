@@ -35,7 +35,7 @@ Kata is a pixel-art fox that lives on the Windows desktop. This brief is the roa
 
 3. For every later milestone, type `/staged-plan the next unticked milestone in BRIEF.md`. It asks its questions, then saves a plan of one-commit steps in `docs/plans/`.
 4. Say "next" to build one step. Claude Code can start the app but cannot see your desktop, so answer each check with pass or fail and what you saw.
-5. When the last step is committed, it ticks the milestone above and proposes the merge.
+5. When the last step is committed, it ticks the milestone above and proposes a pull request into `main`, showing you its title and description first.
 
 If a session gets long, start a new one; the plan file carries the state.
 
