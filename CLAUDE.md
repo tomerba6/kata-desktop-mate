@@ -40,6 +40,8 @@ src/kata/
   brain.py           behaviour state machine                        no Qt
   platforms.py       floors and window tops Kata can stand on       no Qt
   settings.py        load and save user settings                    no Qt
+  switches.py        developer switches from the environment        no Qt
+  crashlog.py        uncaught crashes appended to a file            no Qt
   platform/
     windows.py       ctypes and winreg: window rectangles, autostart
   preview.py         sprite preview (exists)
