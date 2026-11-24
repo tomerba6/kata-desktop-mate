@@ -1,0 +1,24 @@
+# Mutation testing, run by hand (commands in CLAUDE.md), not in CI.
+#
+# cosmic-ray changes the code in small ways (a `<` becomes `<=`, a number changes) and runs the
+# whole suite once per change. A change the suite still passes "survived": no test would notice
+# that bug. It mutates the files on disk and puts them back afterwards.
+#
+# Notes for editing this file:
+# - module-path lists the no-Qt modules, the same set the coverage gate measures (pyproject.toml).
+#   tests/test_no_qt.py fails if it names a Qt module or leaves a no-Qt one out.
+# - test-command names the .venv's Python, since cosmic-ray keeps PATH unchanged and plain
+#   `python` could be another one. cosmic-ray splits the command with shlex, which treats a
+#   backslash as an escape, and Windows won't start a relative path written with forward
+#   slashes. So the path doubles its backslashes inside a single-quoted TOML string, and shlex
+#   hands Windows `.venv\Scripts\python.exe`.
+# - The ci profile makes Hypothesis use the same inputs on every run, so a mutant's outcome
+#   doesn't depend on luck.
+[cosmic-ray]
+module-path = ["src/kata/sheet.py"]
+timeout = 60.0
+excluded-modules = []
+test-command = '.venv\\Scripts\\python.exe -m pytest -x -q -p no:cacheprovider --hypothesis-profile=ci'
+
+[cosmic-ray.distributor]
+name = "local"

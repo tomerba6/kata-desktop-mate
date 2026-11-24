@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kata-desktop-mate"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Kata the fox: a pixel-art desktop mate for Windows."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
     # The core Qt modules only (QtCore, QtGui, QtWidgets). Still imported as "PySide6".
     "PySide6-Essentials>=6.8",
@@ -18,10 +18,18 @@ dev = [
     "pytest>=8",
     "ruff>=0.6",
     "pillow>=10",   # only tools/make_sprites.py needs it
+    "hypothesis>=6.170",
+    "coverage>=7.17",
+    "mypy>=2.4",
+    "cosmic-ray>=8.9",
 ]
 
 [project.gui-scripts]
 kata = "kata.__main__:main"
+
+[tool.setuptools.dynamic]
+# The one copy of the version is kata.__version__; the package metadata is read from it.
+version = { attr = "kata.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -31,6 +39,23 @@ kata = ["assets/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["kata"]
+
+[tool.coverage.report]
+# The gate: the no-Qt modules, and only those. tests/test_no_qt.py fails if this list and what
+# the modules really import disagree. The Qt modules are checked by hand instead (CLAUDE.md).
+include = ["*/kata/sheet.py"]
+fail_under = 90
+show_missing = true
+
+[tool.mypy]
+strict = true
+files = ["src", "tests", "tools"]
+# Find kata in src/ directly: mypy may not follow the editable install's import hook.
+mypy_path = "src"
 
 [tool.ruff]
 line-length = 110

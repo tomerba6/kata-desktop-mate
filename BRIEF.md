@@ -1,6 +1,6 @@
 # Kata desktop mate: build brief
 
-Kata is a pixel-art fox that lives on the Windows desktop. This brief is the roadmap for building it in Claude Code, one milestone at a time. Python 3.10+, PySide6 (Qt 6 Widgets), Windows 10/11.
+Kata is a pixel-art fox that lives on the Windows desktop. This brief is the roadmap for building it in Claude Code, one milestone at a time. Python 3.14+, PySide6 (Qt 6 Widgets), Windows 10/11.
 
 ## What the finished app does
 
@@ -35,7 +35,7 @@ Kata is a pixel-art fox that lives on the Windows desktop. This brief is the roa
 
 3. For every later milestone, type `/staged-plan the next unticked milestone in BRIEF.md`. It asks its questions, then saves a plan of one-commit steps in `docs/plans/`.
 4. Say "next" to build one step. Claude Code can start the app but cannot see your desktop, so answer each check with pass or fail and what you saw.
-5. When the last step is committed, it ticks the milestone above and proposes the merge.
+5. When the last step is committed, it ticks the milestone above and proposes a pull request into `main`, showing you its title and description first.
 
 If a session gets long, start a new one; the plan file carries the state.
 
@@ -72,6 +72,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 - Place Kata on the primary screen with the feet on the bottom edge of `QScreen.availableGeometry()`, which is the top of the taskbar. Use `ground_y`, not the frame height.
 - `python -m kata` now starts the pet. The preview stays available as `python -m kata.preview`.
 - A temporary way out: right-click, then Quit. M5 replaces it with the tray menu.
+- A developer switch: `KATA_LOG=1` in the environment prints timestamped events to standard out. In M1 that is the screen, its available geometry and the feet point when Kata is placed, so the paws-on-the-taskbar check can also be read as numbers. Whether a switch is on is a pure function in `switches.py` that is given the environment; later milestones log their own events.
 
 **Check by hand**
 
@@ -82,11 +83,13 @@ Each section below is the input for that milestone's staged plan. When the miles
 
 **Tests**
 
-- `Animator`: a looping animation wraps to frame 0, a one-shot stops on its last frame and sets `finished`, `play` restarts at frame 0.
+- `Animator`: a looping animation wraps to frame 0, a one-shot stops on its last frame and sets `finished`, `play` restarts at frame 0, and a time that reaches a frame boundary through many small `advance` steps shows the new frame, not the old one.
+- `switches`: on for `1` or `true` in any case; off when unset or set to anything else.
+- Property tests (Hypothesis): for any sequence of `advance(dt)` steps, the frame index stays in range, and a one-shot animation never moves past its last frame.
 
 **Watch out**
 
-- `kata.sprites` imports PySide6 at the top, so `animator.py` imports `AnimationInfo` only under `typing.TYPE_CHECKING`.
+- Work out the frame as `floor(elapsed * fps + 1e-4)` on the accumulated time, not by dividing by a stored `1 / fps`. A frame boundary is not exact in floating point, so a bare floor can stay on the old frame for one tick, and a stored `1 / 12` drifts over a long session.
 - On Windows a frameless translucent Qt window normally lets clicks through its fully transparent pixels. If your check shows clicks being swallowed, set a mask per frame with `setMask(pixmap.mask())`.
 - With display scaling at 125% or 150%, Qt measures in device-independent pixels and the art can look uneven. Note what you see and leave the fix for M8 unless it is ugly.
 
@@ -101,6 +104,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 - Mouse handling in `PetWindow`: a press starts a possible drag. Once the pointer has moved more than `QApplication.startDragDistance()`, it is a drag: play `held` and keep the `held` anchor pixel under the cursor, using `event.globalPosition()`. On release play `fall` until the body lands, then `idle`.
 - A press and release that never passes the threshold is a click. Emit a `clicked` signal; M4 uses it.
 - Bounds are the union of all screens (`QScreen.availableVirtualGeometry()`), and the floor is the bottom of the available area of the screen Kata is over.
+- Under `KATA_LOG`, log each grab, release and landing with the feet point and the floor.
 
 **Check by hand**
 
@@ -112,6 +116,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 **Tests**
 
 - `Body`: falls under gravity, stops exactly on the floor, never passes the bounds, does nothing when already resting.
+- Property tests: for any start inside the bounds and any sequence of `step(dt, ...)` calls, the feet stay inside the bounds and never end up below the floor.
 
 ### M3 Wander, sit, sleep
 
@@ -125,6 +130,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 - Facing left uses mirrored frames built once at load: `pixmap.transformed(QTransform().scale(-1, 1))`.
 - After a long quiet spell Kata goes from `SIT` to `SLEEP`. Any click or grab wakes it.
 - All timings and weights live in one `BehaviourConfig` dataclass.
+- Under `KATA_LOG`, log each state change with its time.
 
 **Check by hand**
 
@@ -134,8 +140,10 @@ Each section below is the input for that milestone's staged plan. When the miles
 **Tests**
 
 - Every transition, turning at the edges, wake on interaction.
-- A seeded ten-minute simulated run stays inside the bounds and visits every state.
+- Seeded simulated runs, hundreds of seeds rather than one, ten simulated minutes each: at every step Kata stays inside the bounds and no state outlasts the longest time `BehaviourConfig` allows it, and across the runs every state is visited. A failure prints its seed, so it reproduces exactly.
+- A headless smoke test wires `Brain`, `Body` and `Animator` together the way `app.py` does on each tick and runs a simulated session: nothing raises and Kata stays inside the bounds. M7 adds platforms to it.
 - `read_sheet_info()` returns the walk `stride`, and the walking speed works out to 15 × scale with the current sheet.
+- A Hypothesis stateful test drives `Brain` with random sequences of `update(dt)`, `grabbed()`, `released()` and `landed()`. After every step, the animation it asks for is one the sheet has, and it is in `HELD` only between a `grabbed()` and the next `released()`.
 
 ### M4 React to a click
 
@@ -155,6 +163,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 **Tests**
 
 - `HAPPY` returns to the interrupted state; clicks in `HELD` and `FALL` change nothing; click during `SLEEP` wakes.
+- The M3 stateful test also sends `clicked()`: whatever the sequence of clicks, the brain leaves `HAPPY` once `happy` finishes, so no sequence leaves it stuck.
 
 ### M5 Tray menu and settings
 
@@ -165,8 +174,9 @@ Each section below is the input for that milestone's staged plan. When the miles
 - `QSystemTrayIcon` with a `QMenu`: Pause wandering, Sit, Sleep, Size (2x, 3x, 4x), Always on top, Start with Windows (disabled until M6), Quit. Right-clicking Kata opens the same menu.
 - The tray image is Kata's head cropped from the first `idle` frame.
 - `app.setQuitOnLastWindowClosed(False)`, so the app lives in the tray.
-- `Settings` dataclass saved as JSON. `settings.py` has no Qt: it loads from and saves to a path it is given, and `app.py` builds that path from `QStandardPaths.StandardLocation.AppConfigLocation`. Loaded at start; a missing or broken file means defaults. Changing size rebuilds the frames.
+- `Settings` dataclass saved as JSON. `settings.py` has no Qt: it loads from and saves to a path it is given, and `app.py` builds that path from `QStandardPaths.StandardLocation.AppConfigLocation`. Loaded at start. The file carries a `version`: a missing file, a broken file or another version means defaults, and in a readable file a single bad value falls back to its own default without losing the rest. Changing size rebuilds the frames.
 - One running copy only, using `QLockFile`.
+- A crash log in `crashlog.py`, no Qt: a `sys.excepthook` that appends a timestamped traceback to `crash.log` in the settings folder, then hands the crash on to the previous hook. It never raises itself. The path and the clock are passed in, and `app.py` installs it. From M6 Kata runs under `pythonw.exe` with no console, so without this a crash would leave no trace.
 
 **Check by hand**
 
@@ -176,7 +186,13 @@ Each section below is the input for that milestone's staged plan. When the miles
 
 **Tests**
 
-- Settings round-trip; defaults on a missing file; defaults on a corrupt file. Use pytest's `tmp_path`.
+- Settings round-trip; defaults on a missing file; defaults on a corrupt file; defaults on another version; one bad value keeps the others. Use pytest's `tmp_path`.
+- Crash log: an entry has the time and the full traceback, entries append, a failed write is swallowed, and the previous hook still runs.
+- Property test: any valid `Settings` comes back unchanged after a save and a load.
+
+**Watch out**
+
+- Check how PySide6 reports an exception raised inside a slot or a timer callback before relying on `sys.excepthook` to catch it.
 
 ### M6 Start with Windows
 
@@ -225,6 +241,8 @@ Each section below is the input for that milestone's staged plan. When the miles
 **Tests**
 
 - Segment building with overlapping windows; landing; riding a moving segment; losing support.
+- The M3 smoke test also runs with platforms built from a fake window list.
+- Property test: for random sets of overlapping windows, no segment lies where a window in front of it covers it.
 
 **Watch out**
 
@@ -236,11 +254,13 @@ Each section below is the input for that milestone's staged plan. When the miles
 **Build**
 
 - An app icon (`.ico`, several sizes) made from the sprite by a small script in `tools/`.
-- A PyInstaller build with no console window that includes `kata/assets`. Start with a one-folder build. Take the exact flags from the current PyInstaller documentation, and confirm the `importlib.resources` loading in `sprites.py` works in the built exe.
+- A PyInstaller build with no console window that includes `kata/assets`. Start with a one-folder build. Take the exact flags from the current PyInstaller documentation, and confirm the `importlib.resources` loading in `sheet.py` and `sprites.py` works in the built exe.
 - Autostart stores the exe path when running packaged.
-- Crisp pixels at 125% and 150% display scaling.
+- Crisp pixels at 125% and 150% display scaling: a pure, tested function chooses the scale so each sprite pixel covers a whole number of device pixels at the screen's `devicePixelRatio()`.
 - Hide Kata while a fullscreen app is in front. Slow the tick while asleep.
-- README with a short GIF, a `v1.0.0` tag, and a GitHub release with the zipped build.
+- A release workflow: a `v*` tag runs the checks, builds the PyInstaller exe on `windows-latest`, zips it and publishes it as a GitHub Release. CI also builds the package on every push without publishing it, so a broken build shows up before the tag does.
+- A `CHANGELOG.md` in the Keep a Changelog format, with a "Known limitations" section (an unsigned exe, Windows only).
+- README with a short GIF, then the `v1.0.0` tag.
 
 **Check by hand**
 

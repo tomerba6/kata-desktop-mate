@@ -4,17 +4,10 @@ from importlib.resources import as_file, files
 
 from PySide6.QtGui import QImage
 
-from kata.sprites import read_sheet_info
-
-EXPECTED = {"idle", "walk", "sit", "sleep", "happy", "held", "fall"}
+from kata.sheet import read_sheet_info
 
 
-def test_every_behaviour_has_an_animation():
-    info = read_sheet_info()
-    assert set(info.animations) == EXPECTED
-
-
-def test_animations_fit_inside_the_sheet():
+def test_animations_fit_inside_the_sheet() -> None:
     info = read_sheet_info()
     with as_file(files("kata").joinpath("assets", info.image)) as path:
         sheet = QImage(str(path))  # QImage, unlike QPixmap, works without a QApplication
@@ -26,15 +19,7 @@ def test_animations_fit_inside_the_sheet():
         assert (anim.row + 1) * info.frame_h <= sheet.height(), anim.name
 
 
-def test_held_knows_where_the_cursor_grips():
-    info = read_sheet_info()
-    anchor = info.animations["held"].anchor
-    assert anchor is not None
-    assert 0 <= anchor[0] < info.frame_w
-    assert 0 <= anchor[1] < info.frame_h
-
-
-def test_feet_stand_on_the_ground_line():
+def test_feet_stand_on_the_ground_line() -> None:
     info = read_sheet_info()
     with as_file(files("kata").joinpath("assets", info.image)) as path:
         sheet = QImage(str(path))

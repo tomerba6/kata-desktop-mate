@@ -14,7 +14,8 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QKeyEvent, QPainter, QPaintEvent
 from PySide6.QtWidgets import QApplication, QWidget
 
-from kata.sprites import load_frames, read_sheet_info
+from kata.sheet import read_sheet_info
+from kata.sprites import load_frames
 
 SCALE = 6
 BACKGROUND = QColor(58, 92, 110)

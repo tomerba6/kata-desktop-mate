@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Callable
 from pathlib import Path
 
 from PIL import Image
@@ -103,7 +104,7 @@ class Canvas:
                 if ch != ".":
                     self.put(ox + x, oy + y, ch)
 
-    def part(self, draw) -> None:
+    def part(self, draw: Callable[[Canvas], None]) -> None:
         """Draw one body part on its own layer, then merge it.
 
         Where the new part overlaps what is already there, the pixels just
@@ -152,7 +153,10 @@ class Canvas:
 # ---------- body parts ----------
 
 
-def tail(c: Canvas, base, ctrl, tip, fat: float = 4.0) -> None:
+type Point = tuple[float, float]  # x, y in frame pixels
+
+
+def tail(c: Canvas, base: Point, ctrl: Point, tip: Point, fat: float = 4.0) -> None:
     """A fluffy tail: a row of overlapping discs along a curve, cream at the end."""
     steps = 26
     for i in range(steps + 1):
@@ -218,8 +222,9 @@ def stand(
     head_dy: int = 0,
     eye: str = "open",
     mouth: bool = False,
-    legs=((0, 0), (0, 0), (0, 0), (0, 0)),  # far back, near back, far front, near front: (foot_dx, lift)
-    tail_tip=(0, 0),
+    # far back, near back, far front, near front: (foot_dx, lift)
+    legs: tuple[tuple[int, int], ...] = ((0, 0), (0, 0), (0, 0), (0, 0)),
+    tail_tip: tuple[int, int] = (0, 0),
     tail_pose: str = "up",
     wave: int = 0,
     ribbons_up: bool = False,
@@ -242,7 +247,9 @@ def stand(
     c.part(lambda p: head(p, 22, 15 + by + head_dy, eye, mouth))
 
 
-def sit(c: Canvas, *, eye: str = "open", head_dy: int = 0, tail_tip=(0, 0), wave: int = 0) -> None:
+def sit(
+    c: Canvas, *, eye: str = "open", head_dy: int = 0, tail_tip: tuple[int, int] = (0, 0), wave: int = 0
+) -> None:
     c.part(lambda p: tail(p, (15, 42), (6, 45), (7 + tail_tip[0], 34 + tail_tip[1])))
     c.part(lambda p: ribbons(p, 20, 21 + head_dy, wave))
     c.part(lambda p: leg(p, 28, 38, 0, 0, True, 7))
@@ -420,20 +427,21 @@ HELD_ANCHOR = (22, 21)  # the scruff of the neck in "held" frames: put the curso
 
 def build(root: Path) -> None:
     sheet = Image.new("RGBA", (COLUMNS * FRAME, len(ANIMATIONS) * FRAME), (0, 0, 0, 0))
-    meta = {
+    animations: dict[str, dict[str, object]] = {}
+    meta: dict[str, object] = {
         "image": "kata.png",
         "frame": {"w": FRAME, "h": FRAME},
         "ground_y": GROUND_Y,
         "facing": "right",
-        "animations": {},
+        "animations": animations,
     }
     for row, (name, make, fps, loop) in enumerate(ANIMATIONS):
         frames = make()
         assert len(frames) <= COLUMNS, name
         for col, canvas in enumerate(frames):
             sheet.paste(canvas.finish(), (col * FRAME, row * FRAME))
-        meta["animations"][name] = {"row": row, "frames": len(frames), "fps": fps, "loop": loop}
-    meta["animations"]["held"]["anchor"] = list(HELD_ANCHOR)
+        animations[name] = {"row": row, "frames": len(frames), "fps": fps, "loop": loop}
+    animations["held"]["anchor"] = list(HELD_ANCHOR)
 
     assets = root / "src" / "kata" / "assets"
     assets.mkdir(parents=True, exist_ok=True)
@@ -443,7 +451,7 @@ def build(root: Path) -> None:
 
     # Enlarged contact sheet on a desktop-ish background, so the outline can be judged.
     scale = 4
-    big = sheet.resize((sheet.width * scale, sheet.height * scale), Image.NEAREST)
+    big = sheet.resize((sheet.width * scale, sheet.height * scale), Image.Resampling.NEAREST)
     preview = Image.new("RGBA", big.size, (58, 92, 110, 255))
     preview.alpha_composite(big)
     preview.convert("RGB").save(root / "docs" / "sprites-preview.png")
