@@ -120,14 +120,14 @@ one used. Files: `.gitattributes`, `.editorconfig`, `pyproject.toml`, `README.md
 The refactor in step 3 gets tests that pin what it must not change, and Hypothesis gets its first
 real use. Files: `pyproject.toml`, `tests/conftest.py`, `tests/test_sprites.py`, `.gitignore`.
 
-- [ ] Add `hypothesis>=6.170` to the `dev` extra. Register the `ci` profile in `tests/conftest.py`
+- [x] Add `hypothesis>=6.170` to the `dev` extra. Register the `ci` profile in `tests/conftest.py`
       and ignore `.hypothesis/` in git.
-- [ ] Write the pinning tests in `tests/test_sprites.py`, against today's `kata.sprites`:
+- [x] Write the pinning tests in `tests/test_sprites.py`, against today's `kata.sprites`:
       - a property: for any `fps` from 1 to 1000, `frame_ms` is `1000 / fps` rounded to the
         nearest millisecond (within 0.5);
       - `read_sheet_info()` matches `kata.json` parsed independently with `json`, field by field
         (image, frame size, `ground_y`, and each animation's row, frames, fps, loop and anchor).
-- [ ] These describe existing behaviour, so they pass at once. To see them fail for the right
+- [x] These describe existing behaviour, so they pass at once. To see them fail for the right
       reason, swap `round` for `math.floor` in `frame_ms`, then drop the anchor parsing; run;
       revert each.
 
@@ -384,7 +384,7 @@ Once step 9 is in:
 
 - [x] **Plan approved** (2026-11-24)
 - [x] **1. LF line endings, one version, Python 3.14** (2026-11-24)
-- [ ] **2. Hypothesis, and pin the sheet reader before it moves**
+- [x] **2. Hypothesis, and pin the sheet reader before it moves** (2026-11-24)
 - [ ] **3. Move the sheet reader into a no-Qt `sheet.py`**
 - [ ] **4. The no-Qt boundary test and the coverage gate**
 - [ ] **5. Golden-file test for the sprite sheet**
@@ -410,3 +410,11 @@ Once step 9 is in:
   - ruff targets Python 3.14 now and reports nothing new.
   - My choices: `.editorconfig` indents TOML by 4 (as `pyproject.toml` already is), and it gives
     `*.png` an explicit `binary`.
+- **2026-11-24:** Step 2 built.
+  - Hypothesis 6.170.17 is installed.
+  - 6 passed, both with the default profile and with `--hypothesis-profile=ci`; `nope` is refused
+    with "Profile 'nope' is not registered".
+  - Broken on purpose, then restored:
+    - `frame_ms` truncating instead of rounding: Hypothesis found `fps=101` (9 ms against 9.9 ms);
+    - no anchor parsing: the JSON check and the existing anchor test both failed.
+  - My choice: the new tests carry `-> None` already, ahead of step 6's mypy.
