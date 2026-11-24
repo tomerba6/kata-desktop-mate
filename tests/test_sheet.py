@@ -11,12 +11,12 @@ from kata.sheet import AnimationInfo, read_sheet_info
 EXPECTED = {"idle", "walk", "sit", "sleep", "happy", "held", "fall"}
 
 
-def test_every_behaviour_has_an_animation():
+def test_every_behaviour_has_an_animation() -> None:
     info = read_sheet_info()
     assert set(info.animations) == EXPECTED
 
 
-def test_held_knows_where_the_cursor_grips():
+def test_held_knows_where_the_cursor_grips() -> None:
     info = read_sheet_info()
     anchor = info.animations["held"].anchor
     assert anchor is not None

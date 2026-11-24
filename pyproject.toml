@@ -20,6 +20,7 @@ dev = [
     "pillow>=10",   # only tools/make_sprites.py needs it
     "hypothesis>=6.170",
     "coverage>=7.17",
+    "mypy>=2.4",
 ]
 
 [project.gui-scripts]
@@ -48,6 +49,12 @@ source = ["kata"]
 include = ["*/kata/sheet.py"]
 fail_under = 90
 show_missing = true
+
+[tool.mypy]
+strict = true
+files = ["src", "tests", "tools"]
+# Find kata in src/ directly: mypy may not follow the editable install's import hook.
+mypy_path = "src"
 
 [tool.ruff]
 line-length = 110

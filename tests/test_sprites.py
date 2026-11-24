@@ -7,7 +7,7 @@ from PySide6.QtGui import QImage
 from kata.sheet import read_sheet_info
 
 
-def test_animations_fit_inside_the_sheet():
+def test_animations_fit_inside_the_sheet() -> None:
     info = read_sheet_info()
     with as_file(files("kata").joinpath("assets", info.image)) as path:
         sheet = QImage(str(path))  # QImage, unlike QPixmap, works without a QApplication
@@ -19,7 +19,7 @@ def test_animations_fit_inside_the_sheet():
         assert (anim.row + 1) * info.frame_h <= sheet.height(), anim.name
 
 
-def test_feet_stand_on_the_ground_line():
+def test_feet_stand_on_the_ground_line() -> None:
     info = read_sheet_info()
     with as_file(files("kata").joinpath("assets", info.image)) as path:
         sheet = QImage(str(path))

@@ -9,6 +9,7 @@ A pixel-art desktop pet for Windows 10/11. Python 3.14+, PySide6 (Qt 6 Widgets).
 - Coverage gate (the no-Qt modules, 90% of lines and branches): `.venv\Scripts\python -m coverage run -m pytest`, then `.venv\Scripts\python -m coverage report`
 - Coverage as HTML, after a coverage run: `.venv\Scripts\python -m coverage html`, then open `htmlcov\index.html`. To see every file, Qt ones included: `.venv\Scripts\python -m coverage html --include="*/kata/*" -d htmlcov-all --fail-under=0`
 - Lint: `.venv\Scripts\python -m ruff check .`
+- Types (strict, over `src`, `tests` and `tools`): `.venv\Scripts\python -m mypy`
 - Format: `.venv\Scripts\python -m ruff format .`
 - Redraw the sprites: `.venv\Scripts\python tools\make_sprites.py`
 

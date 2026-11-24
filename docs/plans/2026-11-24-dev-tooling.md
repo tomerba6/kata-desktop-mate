@@ -235,12 +235,12 @@ assets.
 
 Files: `pyproject.toml`, `CLAUDE.md`, plus annotation fixes across `src/`, `tests/` and `tools/`.
 
-- [ ] Add `mypy>=2.4` to the `dev` extra, with `[tool.mypy] strict = true`,
+- [x] Add `mypy>=2.4` to the `dev` extra, with `[tool.mypy] strict = true`,
       `files = ["src", "tests", "tools"]`, `mypy_path = "src"`.
-- [ ] Run it and record the error count in the Session log. Then fix the errors, with no
+- [x] Run it and record the error count in the Session log. Then fix the errors, with no
       behaviour changes: tests get `-> None`, Qt overrides get their event types.
-- [ ] If the count is far larger than a few dozen, or a fix would change behaviour, stop and ask.
-- [ ] Add the mypy command to CLAUDE.md's Commands list.
+- [x] If the count is far larger than a few dozen, or a fix would change behaviour, stop and ask.
+- [x] Add the mypy command to CLAUDE.md's Commands list.
 
 **Verify (me):**
 - `.venv\Scripts\python -m mypy` → `Success: no issues found`.
@@ -389,7 +389,7 @@ Once step 9 is in:
 - [x] **3. Move the sheet reader into a no-Qt `sheet.py`** (2026-11-24)
 - [x] **4. The no-Qt boundary test and the coverage gate** (2026-11-24)
 - [x] **5. Golden-file test for the sprite sheet** (2026-11-24)
-- [ ] **6. Type checking with mypy, strict**
+- [x] **6. Type checking with mypy, strict** (2026-11-24)
 - [ ] **7. Mutation testing with cosmic-ray**
 - [ ] **8. CI on GitHub Actions**
 - [ ] **9. Docs and memory sync**
@@ -462,3 +462,19 @@ Once step 9 is in:
     - the drawn sheet is shared by the three tests (a module-scoped fixture), so it is drawn once
       per run;
     - the failure message tells you to rerun the tool and commit its outputs.
+- **2026-11-24:** Step 6 built.
+  - mypy 2.4.1, strict, first run: 11 errors in 3 files (11 source files checked):
+    - 4 tests without `-> None`;
+    - 4 functions in `make_sprites.py` with untyped parameters;
+    - 2 indexing errors from `build()`'s untyped `meta` dict;
+    - `Image.NEAREST`, which Pillow's type hints don't declare.
+  - `preview.py` and the Qt code needed no fixes.
+  - All fixed with no behaviour change. The golden test still passes, so the sheet and preview
+    are drawn pixel for pixel as before.
+  - A planted `x: int = "a"` in `sheet.py` failed mypy on that line; reverted.
+  - 12 passed; ruff clean.
+  - My choices:
+    - `build()` names its `animations` dict up front instead of reaching into `meta`;
+    - `Image.NEAREST` becomes `Image.Resampling.NEAREST`, the same value under the name Pillow
+      declares;
+    - a `type Point = tuple[float, float]` alias keeps `tail()`'s signature under 110 columns.
