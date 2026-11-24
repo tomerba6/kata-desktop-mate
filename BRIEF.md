@@ -85,6 +85,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 
 - `Animator`: a looping animation wraps to frame 0, a one-shot stops on its last frame and sets `finished`, `play` restarts at frame 0, and a time that reaches a frame boundary through many small `advance` steps shows the new frame, not the old one.
 - `switches`: on for `1` or `true` in any case; off when unset or set to anything else.
+- Property tests (Hypothesis): for any sequence of `advance(dt)` steps, the frame index stays in range, and a one-shot animation never moves past its last frame.
 
 **Watch out**
 
@@ -115,6 +116,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 **Tests**
 
 - `Body`: falls under gravity, stops exactly on the floor, never passes the bounds, does nothing when already resting.
+- Property tests: for any start inside the bounds and any sequence of `step(dt, ...)` calls, the feet stay inside the bounds and never end up below the floor.
 
 ### M3 Wander, sit, sleep
 
@@ -141,6 +143,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 - Seeded simulated runs, hundreds of seeds rather than one, ten simulated minutes each: at every step Kata stays inside the bounds and no state outlasts the longest time `BehaviourConfig` allows it, and across the runs every state is visited. A failure prints its seed, so it reproduces exactly.
 - A headless smoke test wires `Brain`, `Body` and `Animator` together the way `app.py` does on each tick and runs a simulated session: nothing raises and Kata stays inside the bounds. M7 adds platforms to it.
 - `read_sheet_info()` returns the walk `stride`, and the walking speed works out to 15 × scale with the current sheet.
+- A Hypothesis stateful test drives `Brain` with random sequences of `update(dt)`, `grabbed()`, `released()` and `landed()`. After every step, the animation it asks for is one the sheet has, and it is in `HELD` only between a `grabbed()` and the next `released()`.
 
 ### M4 React to a click
 
@@ -160,6 +163,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 **Tests**
 
 - `HAPPY` returns to the interrupted state; clicks in `HELD` and `FALL` change nothing; click during `SLEEP` wakes.
+- The M3 stateful test also sends `clicked()`: whatever the sequence of clicks, the brain leaves `HAPPY` once `happy` finishes, so no sequence leaves it stuck.
 
 ### M5 Tray menu and settings
 
@@ -184,6 +188,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 
 - Settings round-trip; defaults on a missing file; defaults on a corrupt file; defaults on another version; one bad value keeps the others. Use pytest's `tmp_path`.
 - Crash log: an entry has the time and the full traceback, entries append, a failed write is swallowed, and the previous hook still runs.
+- Property test: any valid `Settings` comes back unchanged after a save and a load.
 
 **Watch out**
 
@@ -237,6 +242,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 
 - Segment building with overlapping windows; landing; riding a moving segment; losing support.
 - The M3 smoke test also runs with platforms built from a fake window list.
+- Property test: for random sets of overlapping windows, no segment lies where a window in front of it covers it.
 
 **Watch out**
 

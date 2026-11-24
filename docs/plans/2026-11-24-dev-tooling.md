@@ -308,7 +308,7 @@ and open its `index.html`.
 
 ### 9. Docs and memory sync
 
-- [ ] Update the README, docs and CLAUDE.md wherever this feature changed what they say, and
+- [x] Update the README, docs and CLAUDE.md wherever this feature changed what they say, and
       re-measure every number they quote.
       - README: a CI badge; Quick start and the "What's here" table cover the new commands and
         files.
@@ -323,7 +323,7 @@ and open its `index.html`.
         - M3–M4 brain: stateful tests over random grab, release and click sequences;
         - M5 settings: round-trip for any valid settings;
         - M7 platforms: random overlapping windows.
-- [ ] Update the memory files, if the project keeps them. It doesn't today.
+- [x] Update the memory files, if the project keeps them. It doesn't today.
 
 **Verify (me):** each changed claim checked against the code or a command
 **Verify (you):** read the diff
@@ -392,7 +392,7 @@ Once step 9 is in:
 - [x] **6. Type checking with mypy, strict** (2026-11-24)
 - [x] **7. Mutation testing with cosmic-ray** (2026-11-24)
 - [x] **8. CI on GitHub Actions** (2026-11-24)
-- [ ] **9. Docs and memory sync**
+- [x] **9. Docs and memory sync** (2026-11-24)
 
 ### Deviations
 
@@ -515,3 +515,26 @@ Once step 9 is in:
     - `if: ${{ !cancelled() }}` rather than `always()` for the HTML report and its upload, so a
       cancelled run stops;
     - pip caching is keyed on `pyproject.toml`.
+- **2026-11-24:** Step 8 committed (`83e5220`) and, with your OK, pushed to `origin/dev-tooling`.
+  - CI run 45455781519: both jobs green on the first run, with no follow-up fix needed.
+    - 3.14 (Python 3.14.10): 1m22s.
+    - 3.15 (Python 3.15.2): 1m06s.
+  - Each job's log shows ruff clean, mypy "no issues found in 11 source files", 13 passed, and the
+    gate at 100%.
+  - Both `coverage-html-3.14` and `coverage-html-3.15` were uploaded.
+  - Your check: the downloaded report shows `sheet.py` at 100%. Pass.
+- **2026-11-24:** Step 9 built.
+  - Checked against the files:
+    - every path in README's table exists;
+    - the numbers it and CLAUDE.md quote match: 7 animations, 48x48 frames, 9 milestones, Python
+      3.14 and 3.15 in CI, `fail_under = 90`;
+    - the badge URL serves "CI - passing".
+  - The whole chain passes locally: ruff, mypy, 13 tests, 100%. The edited docs are LF throughout.
+  - My choices:
+    - the stateful-test invariants written into BRIEF M3 and M4: the brain asks only for
+      animations the sheet has, it is in `HELD` only between `grabbed()` and `released()`, and no
+      click sequence leaves it in `HAPPY`;
+    - CLAUDE.md now says where a new no-Qt module has to be added (the coverage `include` and
+      cosmic-ray's `module-path`).
+  - Found: nothing checks cosmic-ray's `module-path` the way `test_no_qt.py` checks the coverage
+    list. Raised with you rather than added, since it is a test, not docs.

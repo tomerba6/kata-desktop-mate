@@ -1,5 +1,7 @@
 # Kata desktop mate
 
+[![CI](https://github.com/tomerba6/kata-desktop-mate/actions/workflows/ci.yml/badge.svg)](https://github.com/tomerba6/kata-desktop-mate/actions/workflows/ci.yml)
+
 Kata is a pixel-art fox that will live on your Windows desktop: standing on the taskbar, wandering, sitting, napping, hopping when clicked, and riding on other windows.
 
 Right now this repo is the starting point: the sprites, a sprite loader and a preview window. The rest gets built milestone by milestone in Claude Code. The roadmap is in [BRIEF.md](BRIEF.md).
@@ -15,9 +17,14 @@ py -m venv .venv
 .venv\Scripts\python -m kata                   # sprite preview
 .venv\Scripts\python -m pytest
 .venv\Scripts\python -m ruff check .
+.venv\Scripts\python -m mypy                   # types, strict
+.venv\Scripts\python -m coverage run -m pytest # the tests again, measured
+.venv\Scripts\python -m coverage report        # the 90% gate on the no-Qt modules
 ```
 
 In the preview window, Left and Right switch animation, Space pauses and Esc quits.
+
+CI runs ruff, mypy, the tests and the coverage gate on every push, on Python 3.14 and 3.15. The HTML coverage report and mutation testing (run by hand) are in the Commands list in [CLAUDE.md](CLAUDE.md).
 
 Calling `.venv\Scripts\python` directly means you never have to activate the virtual environment, so PowerShell's script-execution policy can't get in the way.
 
@@ -34,8 +41,14 @@ Calling `.venv\Scripts\python` directly means you never have to activate the vir
 | `src/kata/preview.py` | A plain window that plays each animation |
 | `tests/test_sheet.py` | Checks that the JSON is read correctly |
 | `tests/test_sprites.py` | Checks that the JSON matches the PNG |
+| `tests/test_make_sprites.py` | Checks that the committed sheet is what `make_sprites.py` draws |
+| `tests/test_no_qt.py` | Checks that the no-Qt modules import no Qt and are all in the coverage gate |
+| `tests/conftest.py` | Hypothesis profiles, including the repeatable `ci` one |
 | `tools/make_sprites.py` | Draws the sprite sheet from code |
 | `docs/sprites-preview.png` | Enlarged contact sheet of every frame |
+| `docs/plans/` | One plan per milestone, with its steps, decisions and session log |
+| `.github/workflows/ci.yml` | CI: lint, types, tests and the coverage gate on every push |
+| `cosmic-ray.toml` | Mutation testing settings, for runs by hand |
 
 ## Changing the art
 
