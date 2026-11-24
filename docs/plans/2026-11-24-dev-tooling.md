@@ -212,16 +212,16 @@ Changing the drawing code without regenerating the committed files now fails a t
 
 Files: `tests/test_make_sprites.py` (new).
 
-- [ ] Check first that the output is deterministic: run `build()` twice into two folders in the
+- [x] Check first that the output is deterministic: run `build()` twice into two folders in the
       scratchpad and compare. The code has no `random` or `time`, but that should be observed,
       not assumed.
-- [ ] Write the test. It loads `tools/make_sprites.py` by path (the `tools` folder isn't a
+- [x] Write the test. It loads `tools/make_sprites.py` by path (the `tools` folder isn't a
       package), runs `build(tmp_path)`, then compares:
       - `kata.json` as parsed data;
       - `kata.png` and `docs/sprites-preview.png` pixel by pixel.
 
       The failure message says to rerun the tool and commit its outputs.
-- [ ] See it fail for the right reason: change idle's fps in `ANIMATIONS` → fails on `kata.json`;
+- [x] See it fail for the right reason: change idle's fps in `ANIMATIONS` → fails on `kata.json`;
       change one `PALETTE` colour → fails on `kata.png`. Revert each.
 
 **Verify (me):** pytest → all passed, with the new test included; `git status` shows no changed
@@ -388,7 +388,7 @@ Once step 9 is in:
 - [x] **2. Hypothesis, and pin the sheet reader before it moves** (2026-11-24)
 - [x] **3. Move the sheet reader into a no-Qt `sheet.py`** (2026-11-24)
 - [x] **4. The no-Qt boundary test and the coverage gate** (2026-11-24)
-- [ ] **5. Golden-file test for the sprite sheet** *(in progress)*
+- [x] **5. Golden-file test for the sprite sheet** (2026-11-24)
 - [ ] **6. Type checking with mypy, strict**
 - [ ] **7. Mutation testing with cosmic-ray**
 - [ ] **8. CI on GitHub Actions**
@@ -447,3 +447,18 @@ Once step 9 is in:
     - for the same reason, step 8's CI HTML step now uses `--fail-under=0`, leaving the gate to
       `coverage report`.
   - Your check: `htmlcov\index.html` shows `sheet.py` at 100%. Pass.
+- **2026-11-24:** Step 5 built.
+  - Two `build()` runs into the scratchpad were byte-identical.
+  - Against the committed files, the pixels and the JSON data match, but the bytes don't:
+    - the PNGs are encoded differently;
+    - on Windows, `write_text` writes the JSON with CRLF line endings.
+
+    So comparing pixels and parsed data was the right call.
+  - 3 new tests (the JSON plus 2 images), 12 passed in all; coverage is still 100%, ruff clean.
+  - Broken on purpose, then restored, with `git diff` on `tools/` and the assets showing nothing:
+    - idle at 6 fps: the JSON test failed;
+    - the heart pink one step bluer: both image tests failed.
+  - My choices:
+    - the drawn sheet is shared by the three tests (a module-scoped fixture), so it is drawn once
+      per run;
+    - the failure message tells you to rerun the tool and commit its outputs.
