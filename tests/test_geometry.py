@@ -10,7 +10,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from kata.geometry import Rect, floor_y, start_feet, window_origin
+from kata.geometry import Bounds, Rect, floor_y, start_feet, window_origin
 from kata.sheet import SheetInfo, read_sheet_info
 
 SCREEN = Rect(0, 0, 1280, 720)  # this machine's usable area, in Qt units, taskbar hidden
@@ -22,6 +22,12 @@ def test_a_rect_cannot_be_changed_after_it_is_made() -> None:
     area = Rect(0, 0, 1280, 720)
     with pytest.raises(dataclasses.FrozenInstanceError):
         area.y = 48  # type: ignore[misc]
+
+
+def test_bounds_cannot_be_changed_after_they_are_made() -> None:
+    bounds = Bounds(0.0, 1000.0, 0.0)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        bounds.top = 50.0  # type: ignore[misc]
 
 
 def test_the_floor_is_the_row_below_the_area_not_its_last_row() -> None:

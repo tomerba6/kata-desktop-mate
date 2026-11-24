@@ -67,6 +67,14 @@ def test_a_negative_dt_raises() -> None:
         animator.advance(-0.001)
 
 
+def test_a_zero_dt_is_allowed_and_changes_nothing() -> None:
+    # Two timer ticks can arrive with no measurable time between them.
+    animator = Animator(ANIMATIONS, "loop")
+    animator.advance(0.5)
+    animator.advance(0.0)
+    assert animator.frame == 1
+
+
 def test_many_small_steps_reach_a_frame_boundary() -> None:
     # Twelve float steps of 1/60 s add up to a hair under 0.2 s, one frame at 5 fps. A timer
     # ticking at 60 Hz must still show the next frame then, not one tick late.

@@ -25,6 +25,19 @@ class Rect:
     h: int
 
 
+@dataclass(frozen=True)
+class Bounds:
+    """Where the feet may go: from left to right, both included, and no higher than top.
+
+    y grows downwards, so "no higher" means y >= top. The floor, the lowest the feet may go, is
+    passed separately, since it depends on which screen Kata is over.
+    """
+
+    left: float
+    right: float
+    top: float
+
+
 def floor_y(area: Rect) -> int:
     """The row Kata's feet stand on: the first row below the area, not its last row."""
     return area.y + area.h

@@ -45,7 +45,7 @@ src/kata/
   animator.py        current frame, looping and one-shot (exists)   no Qt
   sheet.py           reads kata.json into sprite facts (exists)     no Qt
   sprites.py         cuts kata.png into QPixmap frames (exists)
-  body.py            feet position, velocity, gravity, landing      no Qt
+  body.py            feet, velocity, gravity, landing (exists)      no Qt
   brain.py           behaviour state machine                        no Qt
   platforms.py       floors and window tops Kata can stand on       no Qt
   geometry.py        window placement: floor, start spot (exists)   no Qt
