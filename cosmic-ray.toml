@@ -6,6 +6,7 @@
 #
 # Notes for editing this file:
 # - module-path lists the no-Qt modules, the same set the coverage gate measures (pyproject.toml).
+#   tests/test_no_qt.py fails if it names a Qt module or leaves a no-Qt one out.
 # - test-command names the .venv's Python, since cosmic-ray keeps PATH unchanged and plain
 #   `python` could be another one. cosmic-ray splits the command with shlex, which treats a
 #   backslash as an escape, and Windows won't start a relative path written with forward

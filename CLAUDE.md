@@ -28,7 +28,7 @@ A pixel-art desktop pet for Windows 10/11. Python 3.14+, PySide6 (Qt 6 Widgets).
 - GUI code (anything that imports PySide6) stays thin: windows, painting, input, timers.
 - Behaviour, physics, animation playback, settings and platform maths are plain Python with no Qt imports, each with pytest tests. They take time as `dt`, randomness as an injected `random.Random` and file paths as arguments, so the code under test is deterministic.
 - A rule that must hold for any input (the frame index stays in range, the feet stay inside the bounds) is a Hypothesis property test. Locally Hypothesis tries new inputs each run; CI runs `--hypothesis-profile=ci`, which repeats the same inputs, so a CI result can be reproduced.
-- A new no-Qt module goes into `[tool.coverage.report] include` in pyproject.toml (`tests/test_no_qt.py` fails until it does) and into `module-path` in cosmic-ray.toml.
+- A new no-Qt module goes into `[tool.coverage.report] include` in pyproject.toml and into `module-path` in cosmic-ray.toml; `tests/test_no_qt.py` fails until it is in both.
 - Windows-only code (ctypes, winreg) lives in `src/kata/platform/windows.py` behind small functions, with imports guarded by `sys.platform == "win32"`.
 - Never hard-code sprite facts: frame counts, frame size, fps, the ground line, the `held` anchor, the walk stride. Read them from `kata.json` through `kata.sheet`, which has no Qt, so any module can import it. Behaviour and physics numbers (timings, weights, gravity) go in config dataclasses such as `BehaviourConfig`, not as literals in the code.
 - Scale pixel art by whole numbers with `Qt.TransformationMode.FastTransformation`.

@@ -42,7 +42,7 @@ Calling `.venv\Scripts\python` directly means you never have to activate the vir
 | `tests/test_sheet.py` | Checks that the JSON is read correctly |
 | `tests/test_sprites.py` | Checks that the JSON matches the PNG |
 | `tests/test_make_sprites.py` | Checks that the committed sheet is what `make_sprites.py` draws |
-| `tests/test_no_qt.py` | Checks that the no-Qt modules import no Qt and are all in the coverage gate |
+| `tests/test_no_qt.py` | Checks that the no-Qt modules import no Qt, and that the coverage gate and the mutation run cover exactly them |
 | `tests/conftest.py` | Hypothesis profiles, including the repeatable `ci` one |
 | `tools/make_sprites.py` | Draws the sprite sheet from code |
 | `docs/sprites-preview.png` | Enlarged contact sheet of every frame |

@@ -396,7 +396,10 @@ Once step 9 is in:
 
 ### Deviations
 
-<One line each, with the step number: what the plan said, what was done, and why.>
+- **After 9:** the plan held only the coverage `include` list to the no-Qt modules. At your
+  request, `tests/test_no_qt.py` now holds cosmic-ray's `module-path` to them too, so a new pure
+  module can't be left out of the mutation run while the report still reads "all killed". Own
+  commit, after step 9.
 
 ### Session log
 
@@ -538,3 +541,10 @@ Once step 9 is in:
       cosmic-ray's `module-path`).
   - Found: nothing checks cosmic-ray's `module-path` the way `test_no_qt.py` checks the coverage
     list. Raised with you rather than added, since it is a test, not docs.
+- **2026-11-24:** Step 9 committed (`ca41a12`). The cosmic-ray gap closed at your request (see
+  Deviations).
+  - `test_mutation_testing_mutates_exactly_the_no_qt_modules` passes on today's config.
+  - Broken both ways, then restored:
+    - `sprites.py` in place of `sheet.py`: it named `kata.sheet` as missing;
+    - both listed: it named `kata.sprites` as a Qt module.
+  - 14 passed; ruff, mypy and the gate are clean; cosmic-ray still loads its config.

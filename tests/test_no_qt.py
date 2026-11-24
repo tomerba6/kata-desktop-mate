@@ -1,9 +1,10 @@
 """The no-Qt rule, checked rather than remembered.
 
-Three things say which modules have no Qt in them: what each module really imports, the coverage
-gate's `include` list in pyproject.toml, and the "no Qt" marks in CLAUDE.md's Layout. Nothing else
-holds them together, so a new pure module could sit outside the gate, or a pure module could
-quietly pick up a Qt import, and the build would stay green. These tests make all three agree.
+Four things say which modules have no Qt in them: what each module really imports, the coverage
+gate's `include` list in pyproject.toml, `module-path` in cosmic-ray.toml, and the "no Qt" marks in
+CLAUDE.md's Layout. Nothing else holds them together, so a new pure module could sit outside the
+gate or the mutation run, or a pure module could quietly pick up a Qt import, and the build would
+stay green. These tests make all four agree.
 
 Each module is imported in a fresh interpreter and counts as Qt if PySide6 ends up loaded, so an
 indirect import counts too: a module that imports kata.sprites is a Qt module even though it
@@ -20,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PACKAGE = ROOT / "src" / "kata"
 GATED_PATTERN = re.compile(r"\*/kata/([\w/]+)\.py")
+MUTATED_PATTERN = re.compile(r"src/kata/([\w/]+)\.py")
 
 
 def module_names() -> list[str]:
@@ -52,6 +54,18 @@ def gated_modules() -> set[str]:
         assert match, f"coverage include entry {pattern!r} is not of the form */kata/<module>.py"
         gated.add("kata." + match.group(1).replace("/", "."))
     return gated
+
+
+def mutated_modules() -> set[str]:
+    """The modules named in cosmic-ray.toml's module-path, dotted."""
+    config = tomllib.loads((ROOT / "cosmic-ray.toml").read_text(encoding="utf-8"))
+    paths = config["cosmic-ray"]["module-path"]
+    mutated = set()
+    for path in [paths] if isinstance(paths, str) else paths:
+        match = MUTATED_PATTERN.fullmatch(path)
+        assert match, f"cosmic-ray module-path entry {path!r} is not of the form src/kata/<module>.py"
+        mutated.add("kata." + match.group(1).replace("/", "."))
+    return mutated
 
 
 def marked_in_claude_md() -> set[str]:
@@ -91,6 +105,17 @@ def test_the_coverage_gate_measures_exactly_the_no_qt_modules() -> None:
     )
     assert not gated - no_qt, (
         f"the coverage gate names modules that import Qt or no longer exist: {sorted(gated - no_qt)}"
+    )
+
+
+def test_mutation_testing_mutates_exactly_the_no_qt_modules() -> None:
+    no_qt, mutated = no_qt_modules(), mutated_modules()
+    assert not no_qt - mutated, (
+        f"these modules import no Qt, so they belong in module-path in cosmic-ray.toml: "
+        f"{sorted(no_qt - mutated)}"
+    )
+    assert not mutated - no_qt, (
+        f"cosmic-ray.toml mutates modules that import Qt or no longer exist: {sorted(mutated - no_qt)}"
     )
 
 
