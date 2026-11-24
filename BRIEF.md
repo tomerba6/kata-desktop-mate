@@ -88,7 +88,6 @@ Each section below is the input for that milestone's staged plan. When the miles
 
 **Watch out**
 
-- `kata.sprites` imports PySide6 at the top, so `animator.py` imports `AnimationInfo` only under `typing.TYPE_CHECKING`.
 - Work out the frame as `floor(elapsed * fps + 1e-4)` on the accumulated time, not by dividing by a stored `1 / fps`. A frame boundary is not exact in floating point, so a bare floor can stay on the old frame for one tick, and a stored `1 / 12` drifts over a long session.
 - On Windows a frameless translucent Qt window normally lets clicks through its fully transparent pixels. If your check shows clicks being swallowed, set a mask per frame with `setMask(pixmap.mask())`.
 - With display scaling at 125% or 150%, Qt measures in device-independent pixels and the art can look uneven. Note what you see and leave the fix for M8 unless it is ugly.
@@ -249,7 +248,7 @@ Each section below is the input for that milestone's staged plan. When the miles
 **Build**
 
 - An app icon (`.ico`, several sizes) made from the sprite by a small script in `tools/`.
-- A PyInstaller build with no console window that includes `kata/assets`. Start with a one-folder build. Take the exact flags from the current PyInstaller documentation, and confirm the `importlib.resources` loading in `sprites.py` works in the built exe.
+- A PyInstaller build with no console window that includes `kata/assets`. Start with a one-folder build. Take the exact flags from the current PyInstaller documentation, and confirm the `importlib.resources` loading in `sheet.py` and `sprites.py` works in the built exe.
 - Autostart stores the exe path when running packaged.
 - Crisp pixels at 125% and 150% display scaling: a pure, tested function chooses the scale so each sprite pixel covers a whole number of device pixels at the screen's `devicePixelRatio()`.
 - Hide Kata while a fullscreen app is in front. Slow the tick while asleep.

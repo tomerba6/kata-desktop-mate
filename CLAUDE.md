@@ -24,7 +24,7 @@ A pixel-art desktop pet for Windows 10/11. Python 3.14+, PySide6 (Qt 6 Widgets).
 - GUI code (anything that imports PySide6) stays thin: windows, painting, input, timers.
 - Behaviour, physics, animation playback, settings and platform maths are plain Python with no Qt imports, each with pytest tests. They take time as `dt`, randomness as an injected `random.Random` and file paths as arguments, so tests are deterministic.
 - Windows-only code (ctypes, winreg) lives in `src/kata/platform/windows.py` behind small functions, with imports guarded by `sys.platform == "win32"`.
-- Never hard-code sprite facts: frame counts, frame size, fps, the ground line, the `held` anchor, the walk stride. Read them from `kata.json` through `kata.sprites`, and pass them as plain values to the modules without Qt (`kata.sprites` imports PySide6). Behaviour and physics numbers (timings, weights, gravity) go in config dataclasses such as `BehaviourConfig`, not as literals in the code.
+- Never hard-code sprite facts: frame counts, frame size, fps, the ground line, the `held` anchor, the walk stride. Read them from `kata.json` through `kata.sheet`, which has no Qt, so any module can import it. Behaviour and physics numbers (timings, weights, gravity) go in config dataclasses such as `BehaviourConfig`, not as literals in the code.
 - Scale pixel art by whole numbers with `Qt.TransformationMode.FastTransformation`.
 
 ## Layout
@@ -35,7 +35,8 @@ src/kata/
   app.py             QApplication setup, wiring, tray
   window.py          PetWindow: painting and mouse input
   animator.py        current frame; looping and one-shot playback   no Qt
-  sprites.py         sheet loading (exists)
+  sheet.py           reads kata.json into sprite facts (exists)     no Qt
+  sprites.py         cuts kata.png into QPixmap frames (exists)
   body.py            feet position, velocity, gravity, landing      no Qt
   brain.py           behaviour state machine                        no Qt
   platforms.py       floors and window tops Kata can stand on       no Qt

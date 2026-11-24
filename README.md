@@ -29,8 +29,10 @@ Calling `.venv\Scripts\python` directly means you never have to activate the vir
 | `CLAUDE.md` | Project rules Claude Code reads at the start of every session |
 | `src/kata/assets/kata.png` | The sprite sheet: 7 animations, 48x48 frames |
 | `src/kata/assets/kata.json` | Which row is which animation, frame counts, speeds |
-| `src/kata/sprites.py` | Reads the JSON and cuts the sheet into frames |
+| `src/kata/sheet.py` | Reads the JSON: frame size, ground line, animations. No Qt |
+| `src/kata/sprites.py` | Cuts the sheet into frames |
 | `src/kata/preview.py` | A plain window that plays each animation |
+| `tests/test_sheet.py` | Checks that the JSON is read correctly |
 | `tests/test_sprites.py` | Checks that the JSON matches the PNG |
 | `tools/make_sprites.py` | Draws the sprite sheet from code |
 | `docs/sprites-preview.png` | Enlarged contact sheet of every frame |

@@ -148,13 +148,13 @@ types. This is a refactor: no behaviour changes.
 Files: `src/kata/sheet.py` (new), `src/kata/sprites.py`, `src/kata/preview.py`,
 `tests/test_sheet.py` (new), `tests/test_sprites.py`, `CLAUDE.md`, `BRIEF.md`, `README.md`.
 
-- [ ] Run the full suite: 6 passed.
-- [ ] Move `AnimationInfo`, `SheetInfo` and `read_sheet_info` to `sheet.py` verbatim.
+- [x] Run the full suite: 6 passed.
+- [x] Move `AnimationInfo`, `SheetInfo` and `read_sheet_info` to `sheet.py` verbatim.
       `sprites.py` keeps `load_frames` and imports `SheetInfo` from `kata.sheet`. `preview.py`
       imports `read_sheet_info` from `kata.sheet`. Update both module docstrings.
-- [ ] Move the tests that need no Qt to `tests/test_sheet.py`. The two that read the PNG with
+- [x] Move the tests that need no Qt to `tests/test_sheet.py`. The two that read the PNG with
       `QImage` stay in `tests/test_sprites.py`.
-- [ ] Update the docs this changes:
+- [x] Update the docs this changes:
       - CLAUDE.md Layout: the `sheet.py` and `sprites.py` lines.
       - CLAUDE.md line 27: read sprite facts "through `kata.sheet`, which has no Qt", and drop
         the PySide6 caveat.
@@ -385,7 +385,7 @@ Once step 9 is in:
 - [x] **Plan approved** (2026-11-24)
 - [x] **1. LF line endings, one version, Python 3.14** (2026-11-24)
 - [x] **2. Hypothesis, and pin the sheet reader before it moves** (2026-11-24)
-- [ ] **3. Move the sheet reader into a no-Qt `sheet.py`**
+- [x] **3. Move the sheet reader into a no-Qt `sheet.py`** (2026-11-24)
 - [ ] **4. The no-Qt boundary test and the coverage gate**
 - [ ] **5. Golden-file test for the sprite sheet**
 - [ ] **6. Type checking with mypy, strict**
@@ -418,3 +418,14 @@ Once step 9 is in:
     - `frame_ms` truncating instead of rounding: Hypothesis found `fps=101` (9 ms against 9.9 ms);
     - no anchor parsing: the JSON check and the existing anchor test both failed.
   - My choice: the new tests carry `-> None` already, ahead of step 6's mypy.
+- **2026-11-24:** Step 3 built.
+  - 6 passed before the move and 6 after, with both profiles.
+  - Comparing against the committed `sprites.py`, the moved 45-line block and `load_frames` are
+    identical.
+  - `import kata.sheet` loads no PySide6. ruff is clean.
+  - My choices:
+    - README's table gains a `tests/test_sheet.py` row as well as the `sheet.py` row;
+    - `test_sprites.py` keeps its name, although it checks the PNG against the JSON rather than
+      `load_frames`, which still has no test. That gap is the one Qt function left untested, and
+      the mutation run in step 7 covers only the no-Qt modules.
+  - Your check: the preview plays all seven animations. Pass.
