@@ -257,17 +257,17 @@ as the baseline.
 
 Files: `pyproject.toml`, `cosmic-ray.toml` (new), `.gitignore`, `CLAUDE.md`.
 
-- [ ] Add `cosmic-ray>=8.9` to the `dev` extra. Write `cosmic-ray.toml` by hand from its current
+- [x] Add `cosmic-ray>=8.9` to the `dev` extra. Write `cosmic-ray.toml` by hand from its current
       docs (`new-config` is interactive):
       - it mutates the no-Qt modules (today `src/kata/sheet.py`);
       - its test command is the full pytest suite.
 
       Ignore the session database in git.
-- [ ] Run init, exec and the report. If cosmic-ray fails on Python 3.14, stop and ask (see
+- [x] Run init, exec and the report. If cosmic-ray fails on Python 3.14, stop and ask (see
       Decisions).
-- [ ] Record killed and survived counts in the Session log, and list each survivor in the report
+- [x] Record killed and survived counts in the Session log, and list each survivor in the report
       to you. Killing them is your call, not part of this step.
-- [ ] Add the commands to CLAUDE.md's Commands list, marked "by hand".
+- [x] Add the commands to CLAUDE.md's Commands list, marked "by hand".
 
 **Verify (me):** the report shows every mutant either killed or survived, with none left
 incomplete, and the counts are recorded.
@@ -390,7 +390,7 @@ Once step 9 is in:
 - [x] **4. The no-Qt boundary test and the coverage gate** (2026-11-24)
 - [x] **5. Golden-file test for the sprite sheet** (2026-11-24)
 - [x] **6. Type checking with mypy, strict** (2026-11-24)
-- [ ] **7. Mutation testing with cosmic-ray**
+- [x] **7. Mutation testing with cosmic-ray** (2026-11-24)
 - [ ] **8. CI on GitHub Actions**
 - [ ] **9. Docs and memory sync**
 
@@ -478,3 +478,29 @@ Once step 9 is in:
     - `Image.NEAREST` becomes `Image.Resampling.NEAREST`, the same value under the name Pillow
       declares;
     - a `type Point = tuple[float, float]` alias keeps `tail()`'s signature under 110 columns.
+- **2026-11-24:** Step 7 built.
+  - cosmic-ray 8.9.0 installs and runs on Python 3.14, so no fallback was needed.
+  - First attempt: all 19 jobs came back `incompetent` in 1 s, meaning the test command never
+    started. Windows won't start a relative path written with forward slashes
+    (`.venv/Scripts/python.exe`), and cosmic-ray's `shlex` split eats single backslashes.
+    `cosmic-ray baseline` still exited 0 and printed nothing, so it doesn't catch this.
+  - Fix: the path written as `'.venv\\Scripts\\python.exe'` in a single-quoted TOML string.
+  - Baseline: 19 mutants of `sheet.py`, 17 killed and 2 survived (10.53%), in 33 s; `sheet.py`
+    restored afterwards (`git diff` shows nothing).
+  - Survivors, both `ReplaceTrueWithFalse`: `@dataclass(frozen=True)` becoming `frozen=False`,
+    on `AnimationInfo` (line 17) and on `SheetInfo` (line 32). No test checks that the sprite
+    facts can't be changed after loading.
+  - My choices:
+    - the test command uses `-x` (stop at the first failure, enough to kill a mutant),
+      `-p no:cacheprovider`, and the `ci` Hypothesis profile so outcomes repeat;
+    - the timeout is 60 s;
+    - the session file is `mutation.sqlite` (ignored), and CLAUDE.md's `init` uses `--force`,
+      because `init` refuses to overwrite a session that has results;
+    - CLAUDE.md notes that `incompetent` means the command never started.
+  - Your call: kill both survivors now.
+    - `tests/test_sheet.py` gains `test_sprite_facts_cannot_be_changed_after_loading`: setting
+      `info.ground_y` or an animation's `fps` raises `FrozenInstanceError`, with a
+      `# type: ignore[misc]` on each, which strict mypy accepts as needed.
+    - 13 passed. Mutants rerun: 19 of 19 killed, in 33 s.
+    - Still open, outside this plan: `frozen` doesn't stop entries being added to or removed from
+      `SheetInfo.animations`.

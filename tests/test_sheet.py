@@ -1,8 +1,10 @@
 """kata.sheet reads kata.json faithfully, without Qt."""
 
+import dataclasses
 import json
 from importlib.resources import files
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -22,6 +24,16 @@ def test_held_knows_where_the_cursor_grips() -> None:
     assert anchor is not None
     assert 0 <= anchor[0] < info.frame_w
     assert 0 <= anchor[1] < info.frame_h
+
+
+def test_sprite_facts_cannot_be_changed_after_loading() -> None:
+    # Every part of the app shares one SheetInfo, so a change made through it would reach them all.
+    # mypy rejects these assignments already; the ignores say the failure is the point.
+    info = read_sheet_info()
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        info.ground_y = 0  # type: ignore[misc]
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        info.animations["walk"].fps = 20  # type: ignore[misc]
 
 
 @given(st.integers(min_value=1, max_value=1000))
