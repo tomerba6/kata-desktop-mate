@@ -14,7 +14,7 @@ A pixel-art desktop pet for Windows 10/11. Python 3.14+, PySide6 (Qt 6 Widgets).
 - Mutation testing, by hand and not in CI (settings in `cosmic-ray.toml`). It changes the no-Qt modules on disk, runs the suite once per change and puts them back. Run `.venv\Scripts\cosmic-ray init cosmic-ray.toml mutation.sqlite --force`, then `.venv\Scripts\cosmic-ray exec cosmic-ray.toml mutation.sqlite`, then `.venv\Scripts\cr-report mutation.sqlite`. Every job must end killed or survived; `incompetent` means the test command never started.
 - Format: `.venv\Scripts\python -m ruff format .`
 - Redraw the sprites: `.venv\Scripts\python tools\make_sprites.py`
-- Measure Kata on the desktop (the run-kata skill, `.claude/skills/run-kata/SKILL.md`): `.venv\Scripts\python tools\inspect_kata.py --launch LOG --capture PNG` to start Kata and report, the same without `--launch` to report on a running Kata, and `--kill` to stop it. LOG and PNG go in the scratchpad, never the repo. It is read-only: it never clicks or types.
+- Measure Kata on the desktop (the run-kata skill, `.claude/skills/run-kata/SKILL.md`): `.venv\Scripts\python tools\inspect_kata.py --launch LOG --capture PNG` to start Kata and report, the same without `--launch` to report on a running Kata, and `--kill` to stop it. Add `--cpu SECONDS` to a report to measure Kata's CPU use. LOG and PNG go in the scratchpad, never the repo. It is read-only: it never clicks or types.
 
 ## Working agreement
 
@@ -41,14 +41,15 @@ A pixel-art desktop pet for Windows 10/11. Python 3.14+, PySide6 (Qt 6 Widgets).
 src/kata/
   __main__.py        entry point (exists)
   app.py             QApplication setup, wiring, tray (exists)
-  window.py          PetWindow: painting and mouse input (exists)
+  window.py          PetWindow: painting, the main tick, mouse input (exists)
   animator.py        current frame, looping and one-shot (exists)   no Qt
   sheet.py           reads kata.json into sprite facts (exists)     no Qt
   sprites.py         cuts kata.png into QPixmap frames (exists)
-  body.py            feet position, velocity, gravity, landing      no Qt
+  body.py            feet, velocity, gravity, landing (exists)      no Qt
+  drag.py            click or drag, and the release speed (exists)  no Qt
   brain.py           behaviour state machine                        no Qt
   platforms.py       floors and window tops Kata can stand on       no Qt
-  geometry.py        window placement: floor, start spot (exists)   no Qt
+  geometry.py        placement: floors, grip, bounds (exists)       no Qt
   settings.py        load and save user settings                    no Qt
   switches.py        developer switches, KATA_LOG lines (exists)    no Qt
   crashlog.py        uncaught crashes appended to a file            no Qt
@@ -57,6 +58,7 @@ src/kata/
   preview.py         sprite preview (exists)
 tests/
   test_<module>.py   one per no-Qt module
+  test_window.py     PetWindow headless: fake clock, made-up mouse events (exists)
 tools/
   make_sprites.py    draws kata.png and kata.json (exists)
   inspect_kata.py    run-kata: measures Kata on the desktop (exists)
@@ -66,6 +68,7 @@ tools/
 
 - Type hints on everything, dataclasses for plain data, `pathlib` for paths.
 - ruff for lint and format, mypy in strict mode for types (settings for both in pyproject.toml). pytest for tests, files named `tests/test_<module>.py`; `tests/test_no_qt.py` checks the no-Qt rule itself.
+- Kata's window is tested headless. `tests/conftest.py` puts Qt on its offscreen platform, so no test opens a window. `tests/test_window.py` gives `PetWindow` a fake clock, a made-up desktop and synthetic mouse events, and calls `tick()` itself. Hand checks are for what this can't show: looks, feel, the menu, a second screen.
 - Conventional Commits: `feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`.
 - One branch per milestone (`m1-window`, `m2-drag`). It reaches `main` through a pull request once its CI is green, merged with "Create a merge commit". Squash would collapse the step commits that the plan refers to, and rebase would leave no record of the PR. Show me the PR's title and description before opening it, since they are public.
 

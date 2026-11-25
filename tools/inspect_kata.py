@@ -6,12 +6,14 @@ whole sprite.
 
 From the repo root:
 
-    .venv\\Scripts\\python tools\\inspect_kata.py --launch LOG [--capture PNG]   start Kata, then report
-    .venv\\Scripts\\python tools\\inspect_kata.py [--capture PNG]                report on the running Kata
-    .venv\\Scripts\\python tools\\inspect_kata.py --kill                         stop Kata
+    .venv\\Scripts\\python tools\\inspect_kata.py --launch LOG [--capture PNG] [--cpu SECONDS]
+    .venv\\Scripts\\python tools\\inspect_kata.py [--capture PNG] [--cpu SECONDS]
+    .venv\\Scripts\\python tools\\inspect_kata.py --kill
 
+The first starts Kata and reports, the second reports on the running Kata, the third stops it.
 LOG receives Kata's KATA_LOG output; PNG receives the capture, with -outline.png beside it. Both
-must be outside the repo: a capture shows the user's desktop.
+must be outside the repo: a capture shows the user's desktop. --cpu adds a line measuring Kata's
+CPU use over SECONDS.
 
 Coordinates are physical pixels unless a line says Qt. Qt units are physical pixels divided by
 the screen's scale (1.5 at 150%). The tool declares itself DPI-aware first, so Windows reports
@@ -119,6 +121,22 @@ def inside_repo(path: Path) -> bool:
     return path.resolve().is_relative_to(ROOT)
 
 
+def filetime_seconds(low: int, high: int) -> float:
+    """A FILETIME in seconds: two 32-bit halves of one count of 100-nanosecond units."""
+    return ((high << 32) | low) / 10_000_000
+
+
+def cpu_percent(cpu_seconds: float, wall_seconds: float, cores: int) -> tuple[float, float]:
+    """CPU time over wall time, as a percentage of one core and of all `cores`.
+
+    The second is the figure Task Manager shows, since it counts every logical core as 100%.
+    """
+    if wall_seconds <= 0:
+        raise ValueError(f"wall time must be positive, got {wall_seconds}")
+    one_core = cpu_seconds * 100 / wall_seconds
+    return one_core, one_core / cores
+
+
 # --- Windows -------------------------------------------------------------------------------------
 
 if sys.platform == "win32":
@@ -158,6 +176,15 @@ if sys.platform == "win32":
     user32.GetAncestor.restype = wintypes.HWND
     user32.GetForegroundWindow.restype = wintypes.HWND
 
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4
+    kernel32.GetProcessTimes.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
     DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4
     GWL_STYLE = -16
     GWL_EXSTYLE = -20
@@ -218,6 +245,22 @@ if sys.platform == "win32":
     def foreground() -> int | None:
         hwnd: int | None = user32.GetForegroundWindow()
         return hwnd
+
+    def process_cpu_seconds(pid: int) -> float:
+        """The CPU time, kernel plus user, that the process has used since it started."""
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            created, exited, kernel, user = (wintypes.FILETIME() for _ in range(4))
+            times = (ctypes.byref(created), ctypes.byref(exited), ctypes.byref(kernel), ctypes.byref(user))
+            if not kernel32.GetProcessTimes(handle, *times):
+                raise ctypes.WinError(ctypes.get_last_error())
+        finally:
+            kernel32.CloseHandle(handle)
+        return filetime_seconds(kernel.dwLowDateTime, kernel.dwHighDateTime) + filetime_seconds(
+            user.dwLowDateTime, user.dwHighDateTime
+        )
 
     def launch(log: Path) -> subprocess.Popen[bytes]:
         """Start `python -m kata` with KATA_LOG=1 and no console window, which would take focus."""
@@ -319,6 +362,20 @@ def report(hwnd: int, capture: Path | None) -> list[str]:
     return lines
 
 
+def measure_cpu(pid: int, seconds: float) -> str:
+    """How much CPU the process uses over the next `seconds`, as a report line."""
+    cpu_before, wall_before = process_cpu_seconds(pid), time.perf_counter()
+    time.sleep(seconds)
+    cpu = process_cpu_seconds(pid) - cpu_before
+    wall = time.perf_counter() - wall_before
+    cores = os.cpu_count() or 1
+    one_core, all_cores = cpu_percent(cpu, wall, cores)
+    return (
+        f"cpu: {cpu:.3f} s of CPU over {wall:.1f} s: {one_core:.2f}% of one core, "
+        f"{all_cores:.2f}% of all {cores} cores (pid {pid})"
+    )
+
+
 def kill() -> int:
     hwnd = find_kata()
     if hwnd is None:
@@ -337,12 +394,15 @@ def main(argv: list[str] | None = None) -> int:
     action.add_argument("--launch", metavar="LOG", type=Path, help="start Kata, its KATA_LOG output to LOG")
     action.add_argument("--kill", action="store_true", help="stop the running Kata")
     parser.add_argument("--capture", metavar="PNG", type=Path, help="save the capture of Kata's square")
+    parser.add_argument("--cpu", metavar="SECONDS", type=float, help="measure Kata's CPU use for SECONDS")
     args = parser.parse_args(argv)
     for path in (args.launch, args.capture):
         if path is not None and inside_repo(path):
             parser.error(f"{path} is inside the repo; captures and logs go outside it, in the scratchpad")
-    if args.kill and args.capture:
-        parser.error("--capture goes with a report, not with --kill")
+    if args.kill and (args.capture or args.cpu is not None):
+        parser.error("--capture and --cpu go with a report, not with --kill")
+    if args.cpu is not None and args.cpu <= 0:
+        parser.error("--cpu needs a positive number of seconds")
     if sys.platform != "win32":
         print("inspect_kata needs Windows")
         return 2
@@ -376,6 +436,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     for line in report(hwnd, args.capture):
         print(line)
+    if args.cpu is not None:
+        print(measure_cpu(window_pid(hwnd), args.cpu))
     return 0
 
 

@@ -1,6 +1,6 @@
 ---
 name: run-kata
-description: Launch Kata on the real Windows desktop and measure it without seeing the screen. It reports the window's styles (title bar, border, taskbar button, topmost, see-through), whether launching took keyboard focus, the window's rectangle in physical pixels and Qt units, which window a click on a see-through or a drawn pixel reaches, and whether the paws sit on the floor. Use it after any change that affects what is on screen, before asking the user to check by hand, and when asked to run, start, stop or look at Kata. Read-only, it never clicks or types. Not for looks, animation feel or multiple monitors, which stay with the user.
+description: Launch Kata on the real Windows desktop and measure it without seeing the screen. It reports the window's styles (title bar, border, taskbar button, topmost, see-through), whether launching took keyboard focus, the window's rectangle in physical pixels and Qt units, which window a click on a see-through or a drawn pixel reaches, whether the paws sit on the floor, and how much CPU Kata uses. Use it after any change that affects what is on screen, before asking the user to check by hand, and when asked to run, start, stop or look at Kata. Read-only, it never clicks or types. Not for looks, animation feel or multiple monitors, which stay with the user.
 ---
 
 # run-kata
@@ -25,13 +25,19 @@ LOG and PNG must be outside the repo; the tool refuses repo paths. Put them in t
 ```powershell
 .venv\Scripts\python tools\inspect_kata.py --launch <scratchpad>\kata.log --capture <scratchpad>\kata.png
 .venv\Scripts\python tools\inspect_kata.py --capture <scratchpad>\kata.png   # report on the running Kata
+.venv\Scripts\python tools\inspect_kata.py --cpu 30                          # the report, plus CPU over 30 s
 .venv\Scripts\python tools\inspect_kata.py --kill
 ```
 
 - `--launch LOG` starts `python -m kata` with `KATA_LOG=1` and no console window, waits for the
-  window, then reports. Kata keeps running after the tool exits.
+  window, then reports. Kata keeps running after the tool exits, and keeps writing to LOG: a
+  `grab`, `release`, `landed` or `click` line each time it is handled. Read LOG after the user's
+  drags: every `landed` should have feet y equal to its `floor`, and every `grab` and `release`
+  feet inside its `bounds` (left, right, top) and not below its `floor`.
 - `--capture PNG` saves the capture, and the outline it found as `<name>-outline.png`. Read
   both PNGs to see them.
+- `--cpu SECONDS` adds a `cpu` line after the report: the CPU time Kata used over that many
+  seconds. It goes with a report, with or without `--launch`, but not with `--kill`.
 - Exit codes: 0 done; 1 Kata not running, or the launch failed; 2 bad arguments, or not Windows.
 
 ## Reading the report
@@ -39,7 +45,7 @@ LOG and PNG must be outside the repo; the tool refuses repo paths. Put them in t
 Coordinates are physical pixels unless the line says Qt. Qt units are physical pixels divided
 by the scale (1.5 at 150%).
 
-| Line | What it says | Good for M1 |
+| Line | What it says | Good since M1 |
 | :-- | :-- | :-- |
 | `focus` | The foreground window before the launch and after it (`--launch` only) | `kept` |
 | `log` | Kata's KATA_LOG lines (`--launch` only) | `placed` with feet y = area y + height |
@@ -53,6 +59,7 @@ by the scale (1.5 at 150%).
 | `drawn pixel` | The same, for an outline pixel near Kata's centre | `= Kata` |
 | `floor` | The lowest drawn row against the floor row | gap 0 |
 | `ground line` | Where the sprite's ground line lands: window top + ground_y x scale x screen scale | within 1 px of the floor row |
+| `cpu` | CPU time Kata's process used over the measurement, as a percentage of one core and of all cores; the second is Task Manager's figure (`--cpu` only) | at rest, about 1% of one core: M1's baseline was 1.09% over 10 s (0.07% of all 16 cores); M2 read 1.41% and 0.78% over 30 s |
 
 The step 4 calibration of M1 (2026-11-24) matched the user's hand checks on every line it
 measures.
@@ -76,5 +83,12 @@ measures.
   launch.
 - **Two processes:** from the venv, `python -m kata` runs as two processes: the venv's launcher
   and the interpreter. `--kill` stops the interpreter, and the launcher exits with it.
+- **CPU precision:**
+  - Windows counts process time in whole clock ticks of 15.625 ms (measured: every step between
+    readings was exactly 0.015625 s). So a 10 s measurement moves in steps of about 0.16% of one
+    core. Measure 30 s or more to compare small differences.
+  - Only the interpreter process, which owns the window, is measured. The venv's launcher
+    process is not counted.
+  - For the idle figure, make sure nobody is dragging Kata during the measurement.
 - **Clean up:** run `--kill` when done, unless the user is about to check Kata by hand.
   `--launch` refuses while Kata is already running.

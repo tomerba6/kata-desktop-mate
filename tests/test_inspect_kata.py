@@ -136,6 +136,23 @@ def test_the_outline_colour_is_what_kata_png_draws_its_edges_in() -> None:
     assert bytes(tool.outline_colour()) == first_drawn
 
 
+def test_a_filetime_is_100_ns_units_split_into_two_32_bit_halves() -> None:
+    # GetProcessTimes reports CPU time as a FILETIME: (high << 32 | low) counts of 100 ns.
+    assert tool.filetime_seconds(10_000_000, 0) == 1.0
+    assert tool.filetime_seconds(0, 1) == 2**32 / 10_000_000  # 429.4967296 s
+    assert tool.filetime_seconds(5_000_000, 1) == (2**32 + 5_000_000) / 10_000_000
+
+
+def test_cpu_use_as_a_share_of_one_core_and_of_all_cores() -> None:
+    # 0.5 s of CPU over 10 s: 5% of one core; on 8 cores, Task Manager would show 0.625%.
+    assert tool.cpu_percent(0.5, 10.0, 8) == (5.0, 0.625)
+
+
+def test_cpu_use_needs_some_wall_time() -> None:
+    with pytest.raises(ValueError):
+        tool.cpu_percent(0.5, 0.0, 8)
+
+
 def test_a_capture_path_inside_the_repo_is_refused() -> None:
     # Captures show the user's desktop; they must never be committed by accident.
     assert tool.inside_repo(ROOT / "docs" / "kata.png")

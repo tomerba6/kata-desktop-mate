@@ -16,7 +16,7 @@ Kata is a pixel-art fox that lives on the Windows desktop. This brief is the roa
 
 - [x] M0 Run the starter
 - [x] M1 Kata on the desktop
-- [ ] M2 Pick up, carry, drop
+- [x] M2 Pick up, carry, drop
 - [ ] M3 Wander, sit, sleep
 - [ ] M4 React to a click
 - [ ] M5 Tray menu and settings
@@ -70,26 +70,7 @@ Done. The plan, with its decisions, what was measured on the way and the watch-o
 
 **Goal:** drag Kata anywhere; on release it falls and lands.
 
-**Build**
-
-- `Body` in `body.py`: feet position `x, y` as floats, velocity `vx, vy`, and `step(dt, floor_y, bounds)` with gravity, landing and clamping to the desktop bounds.
-- One main tick: a `QTimer` at about 60 Hz with real elapsed time from `QElapsedTimer`. Tick, step the body, move the window.
-- Mouse handling in `PetWindow`: a press starts a possible drag. Once the pointer has moved more than `QApplication.startDragDistance()`, it is a drag: play `held` and keep the `held` anchor pixel under the cursor, using `event.globalPosition()`. On release play `fall` until the body lands, then `idle`.
-- A press and release that never passes the threshold is a click. Emit a `clicked` signal; M4 uses it.
-- Bounds are the union of all screens (`QScreen.availableVirtualGeometry()`), and the floor is the bottom of the available area of the screen Kata is over.
-- Under `KATA_LOG`, log each grab, release and landing with the feet point and the floor.
-
-**Check by hand**
-
-- Carry Kata across the screen (and across monitors if you have two). The scruff stays under the cursor.
-- Drop from the top: it falls, speeds up, lands on the taskbar.
-- Kata cannot be thrown or dragged off-screen.
-- CPU use while idle is close to 0%.
-
-**Tests**
-
-- `Body`: falls under gravity, stops exactly on the floor, never passes the bounds, does nothing when already resting.
-- Property tests: for any start inside the bounds and any sequence of `step(dt, ...)` calls, the feet stay inside the bounds and never end up below the floor.
+Done. The plan, with its decisions, what was measured on the way and what was left open (two real screens, unchecked): [docs/plans/2026-11-24-m2-drag.md](docs/plans/2026-11-24-m2-drag.md).
 
 ### M3 Wander, sit, sleep
 
@@ -114,7 +95,7 @@ Done. The plan, with its decisions, what was measured on the way and the watch-o
 
 - Every transition, turning at the edges, wake on interaction.
 - Seeded simulated runs, hundreds of seeds rather than one, ten simulated minutes each: at every step Kata stays inside the bounds and no state outlasts the longest time `BehaviourConfig` allows it, and across the runs every state is visited. A failure prints its seed, so it reproduces exactly.
-- A headless smoke test wires `Brain`, `Body` and `Animator` together the way `app.py` does on each tick and runs a simulated session: nothing raises and Kata stays inside the bounds. M7 adds platforms to it.
+- A headless smoke test wires `Brain`, `Body` and `Animator` together the way `PetWindow.tick` does and runs a simulated session: nothing raises and Kata stays inside the bounds. M7 adds platforms to it.
 - `read_sheet_info()` returns the walk `stride`, and the walking speed works out to 15 × scale with the current sheet.
 - A Hypothesis stateful test drives `Brain` with random sequences of `update(dt)`, `grabbed()`, `released()` and `landed()`. After every step, the animation it asks for is one the sheet has, and it is in `HELD` only between a `grabbed()` and the next `released()`.
 
