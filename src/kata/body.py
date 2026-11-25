@@ -28,6 +28,7 @@ class PhysicsConfig:
     gravity: float = 2400.0  # per s²: a drop down a 720-high screen lands in about 0.77 s
     max_fall_speed: float = 2400.0  # per s
     max_throw_speed: float = 1500.0  # per s, the speed a release can give Kata
+    release_window: float = 0.08  # s: the release speed is the pointer's over this long
 
 
 class Body:

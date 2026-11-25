@@ -1,10 +1,11 @@
-"""Start Kata: the QApplication, the sprites, the window, and where it stands.
+"""Start Kata: the QApplication, the sprites, the body, the window, and where it stands.
 
-main() reads the sprite facts, loads the frames at SCALE, plays idle, and stands Kata in the
-middle of the primary screen's floor. The floor is the first row below the area Qt says windows
-may use: the top of the taskbar, or the screen's bottom edge when the taskbar auto-hides, since Qt
-then counts the whole screen as usable. With KATA_LOG=1 in the environment it prints where Kata
-was placed.
+main() reads the sprite facts, loads the frames at SCALE, and stands Kata's body in the middle of
+the primary screen's floor. The floor is the first row below the area Qt says windows may use: the
+top of the taskbar, or the screen's bottom edge when the taskbar auto-hides, since Qt then counts
+the whole screen as usable. The window is handed the body, the clock, Qt's desktop and a log
+function. With KATA_LOG=1 in the environment, the log prints where Kata was placed and, from then
+on, each grab, release, landing and click.
 """
 
 from __future__ import annotations
@@ -13,15 +14,14 @@ import os
 import sys
 import time
 
-from PySide6.QtCore import QSize
 from PySide6.QtWidgets import QApplication
 
-from kata.animator import Animator
-from kata.geometry import Rect, start_feet, window_origin
+from kata.body import Body, PhysicsConfig
+from kata.geometry import start_feet
 from kata.sheet import read_sheet_info
 from kata.sprites import load_frames
 from kata.switches import is_on, log_line
-from kata.window import PetWindow
+from kata.window import Log, PetWindow, qt_desktop, to_rect
 
 SCALE = 3  # each sprite pixel becomes a SCALE x SCALE block; milestone 5 makes it a setting
 
@@ -29,30 +29,45 @@ SCALE = 3  # each sprite pixel becomes a SCALE x SCALE block; milestone 5 makes 
 def main() -> None:
     started = time.perf_counter()
     app = QApplication(sys.argv)
+    log = printing_log(started) if is_on("KATA_LOG", os.environ) else silent_log
     sheet = read_sheet_info()
-    animator = Animator(sheet.animations, "idle")
-    size = QSize(sheet.frame_w * SCALE, sheet.frame_h * SCALE)
-    window = PetWindow(load_frames(sheet, SCALE), animator, size)
 
     screen = app.primaryScreen()
-    usable = screen.availableGeometry()
-    # x, y, width and height only: QRect.bottom() is one row short of the floor.
-    area = Rect(usable.x(), usable.y(), usable.width(), usable.height())
+    area = to_rect(screen.availableGeometry())
     feet = start_feet(area)
-    window.move(*window_origin(feet, sheet, SCALE))
+    body = Body(*feet, PhysicsConfig())
+    window = PetWindow(
+        load_frames(sheet, SCALE),
+        sheet,
+        SCALE,
+        body,
+        clock=time.perf_counter,
+        desktop=qt_desktop,
+        log=log,
+    )
     window.show()
 
-    if is_on("KATA_LOG", os.environ):
-        placed = window.geometry()
-        line = log_line(
-            time.perf_counter() - started,
-            "placed",
-            screen=screen.name(),
-            dpr=screen.devicePixelRatio(),
-            area=(area.x, area.y, area.w, area.h),
-            feet=feet,
-            window=(placed.x(), placed.y(), placed.width(), placed.height()),
-        )
-        print(line, flush=True)
+    placed = window.geometry()
+    log(
+        "placed",
+        screen=screen.name(),
+        dpr=screen.devicePixelRatio(),
+        area=(area.x, area.y, area.w, area.h),
+        feet=feet,
+        window=(placed.x(), placed.y(), placed.width(), placed.height()),
+    )
 
     sys.exit(app.exec())
+
+
+def printing_log(started: float) -> Log:
+    """A log that prints each event as a KATA_LOG line, timed from `started` (perf_counter)."""
+
+    def log(event: str, **fields: object) -> None:
+        print(log_line(time.perf_counter() - started, event, **fields), flush=True)
+
+    return log
+
+
+def silent_log(event: str, **fields: object) -> None:
+    """KATA_LOG is off: log nothing."""

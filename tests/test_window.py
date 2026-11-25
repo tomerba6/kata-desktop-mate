@@ -1,0 +1,298 @@
+"""PetWindow driven headless: Qt's offscreen platform, a fake clock and made-up mouse events.
+
+conftest.py puts Qt on its offscreen platform, so no window appears. The tests call tick()
+themselves, the way the window's timer would, and the fake clock moves on only when a test runs
+ticks, so time is exactly what the test says. A tick is 1/64 s, which floats hold exactly, so a
+300 px drop at gravity 2400 lands on exactly the 32nd tick (½ × 2400 × 0.5² = 300).
+
+Mouse positions are screen positions, as Qt's globalPosition() gives them. The desktop is made up:
+one screen whose usable area starts at (37, 23), not (0, 0), so a mix-up between x and y, or
+between the area and the window, shows.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterator
+
+import pytest
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, Qt
+from PySide6.QtGui import QMouseEvent
+from PySide6.QtWidgets import QApplication
+
+from kata.body import Body, PhysicsConfig
+from kata.geometry import Rect, feet_bounds, window_origin
+from kata.sheet import read_sheet_info
+from kata.sprites import load_frames
+from kata.window import Desktop, PetWindow, to_rect
+
+type Point = tuple[float, float]
+
+SHEET = read_sheet_info()
+SCALE = 3
+# The tests' own numbers, so tuning the app's defaults doesn't break them.
+PHYSICS = PhysicsConfig(gravity=2400.0, max_fall_speed=2400.0, max_throw_speed=1500.0, release_window=0.08)
+AREA = Rect(37, 23, 1280, 697)  # the floor is row 720
+FLOOR = 720
+START = (611.4, 720.0)  # Kata's feet, standing on the floor
+TICK = 1 / 64
+LEFT = Qt.MouseButton.LeftButton
+RIGHT = Qt.MouseButton.RightButton
+NO_BUTTON = Qt.MouseButton.NoButton
+
+
+class Rig:
+    """A PetWindow with a fake clock, a made-up desktop, a recording log, and a mouse."""
+
+    def __init__(self) -> None:
+        self.now = 10.0
+        self.desktop = Desktop(area=AREA, screens=(AREA,))
+        self.logged: list[tuple[str, dict[str, object]]] = []
+        self.clicks = 0
+        self.window = PetWindow(
+            load_frames(SHEET, SCALE),
+            SHEET,
+            SCALE,
+            Body(*START, PHYSICS),
+            clock=lambda: self.now,
+            desktop=lambda: self.desktop,
+            log=self.log,
+        )
+        self.window.clicked.connect(self.count_click)
+        self.window.show()
+
+    def log(self, event: str, **fields: object) -> None:
+        self.logged.append((event, fields))
+
+    def count_click(self) -> None:
+        self.clicks += 1
+
+    def animation(self) -> str:
+        return self.window.animator.animation.name
+
+    def scruff(self) -> Point:
+        """Where the scruff is on screen now: the middle of held's anchor pixel, scaled up."""
+        anchor = SHEET.animations["held"].anchor
+        assert anchor is not None
+        return (
+            self.window.x() + anchor[0] * SCALE + SCALE // 2,
+            self.window.y() + anchor[1] * SCALE + SCALE // 2,
+        )
+
+    def run(self, ticks: int) -> None:
+        """Let `ticks` ticks of the window's timer go by."""
+        for _ in range(ticks):
+            self.now += TICK
+            self.window.tick()
+
+    def press(self, at: Point, button: Qt.MouseButton = LEFT) -> None:
+        self._send(QEvent.Type.MouseButtonPress, at, button, button)
+
+    def move(self, at: Point, buttons: Qt.MouseButton = LEFT) -> None:
+        self._send(QEvent.Type.MouseMove, at, NO_BUTTON, buttons)
+
+    def release(self, at: Point, button: Qt.MouseButton = LEFT) -> None:
+        self._send(QEvent.Type.MouseButtonRelease, at, button, NO_BUTTON)
+
+    def _send(self, kind: QEvent.Type, at: Point, button: Qt.MouseButton, buttons: Qt.MouseButton) -> None:
+        local = QPointF(at[0] - self.window.x(), at[1] - self.window.y())
+        event = QMouseEvent(kind, local, QPointF(*at), button, buttons, Qt.KeyboardModifier.NoModifier)
+        QApplication.sendEvent(self.window, event)
+
+
+@pytest.fixture(scope="session")
+def app() -> QApplication:
+    existing = QApplication.instance()
+    if existing is None:
+        return QApplication([])
+    assert isinstance(existing, QApplication)
+    return existing
+
+
+@pytest.fixture
+def kata(app: QApplication) -> Iterator[Rig]:
+    rig = Rig()
+    yield rig
+    rig.window.close()
+
+
+def on_floor(x: int) -> QPoint:
+    """The window's top-left corner with the feet at column x on the floor."""
+    return QPoint(*window_origin((x, FLOOR), SHEET, SCALE))
+
+
+def lift(kata: Rig, height: float) -> Point:
+    """Press on the scruff, a little right of its middle, and lift Kata by `height`."""
+    x, y = kata.scruff()
+    kata.press((x + 0.4, y))
+    kata.run(1)
+    above = (x + 0.4, y - height)
+    kata.move(above)
+    return above
+
+
+def test_a_qrect_becomes_a_rect_by_its_width_and_height() -> None:
+    # QRect.right() and bottom() are a column and a row short; the floor maths needs w and h.
+    assert to_rect(QRect(37, 23, 1280, 697)) == Rect(37, 23, 1280, 697)
+
+
+def test_kata_starts_where_its_body_stands(kata: Rig) -> None:
+    assert kata.window.pos() == on_floor(611)
+    assert kata.animation() == "idle"
+
+
+def test_carrying_kata_by_the_scruff_moves_the_window_with_the_pointer(kata: Rig) -> None:
+    start = kata.window.pos()
+    x, y = kata.scruff()
+    kata.press((x + 0.4, y))
+    kata.run(1)
+    kata.move((x + 50.4, y))
+    # It moves on the mouse event itself, not on the next tick.
+    assert kata.window.pos() == start + QPoint(50, 0)
+    assert kata.animation() == "held"
+    kata.run(1)
+    kata.move((x + 50.4, y - 100))
+    assert kata.window.pos() == start + QPoint(50, -100)
+    kata.run(30)  # held up there, it doesn't fall
+    assert kata.window.pos() == start + QPoint(50, -100)
+    assert kata.animation() == "held"
+
+
+def test_a_press_and_release_in_place_is_a_click_and_kata_stays_put(kata: Rig) -> None:
+    start = kata.window.pos()
+    x, y = kata.scruff()
+    nearly = QApplication.startDragDistance() - 1  # counted sideways plus up and down
+    kata.press((x, y))
+    kata.run(1)
+    kata.move((x + nearly - 4, y + 4))
+    kata.run(3)
+    kata.release((x + nearly - 4, y + 4))
+    kata.run(30)
+    assert kata.clicks == 1
+    assert kata.window.pos() == start
+    assert kata.animation() == "idle"
+    assert [event for event, _ in kata.logged] == ["click"]
+
+
+def test_a_drop_falls_straight_down_lands_on_the_floor_then_plays_idle(kata: Rig) -> None:
+    start_x = kata.window.x()
+    above = lift(kata, 300)
+    kata.run(32)  # held still for half a second, then let go: no speed
+    kata.release(above)
+    assert kata.animation() == "fall"
+    for _ in range(31):
+        kata.run(1)
+        assert kata.window.x() == start_x
+        assert kata.animation() == "fall"
+    assert kata.window.y() < on_floor(611).y()
+    kata.run(1)  # the 32nd tick: 0.5 s, when a 300 px drop lands
+    assert kata.window.pos() == on_floor(611)
+    assert kata.animation() == "idle"
+
+
+def test_a_flick_carries_kata_as_far_as_the_pointer_was_moving(kata: Rig) -> None:
+    x, y = lift(kata, 300)
+    for k in range(1, 7):  # 10 px right each tick: 640 px/s
+        kata.run(1)
+        kata.move((x + 10 * k, y))
+    kata.release((x + 10 * k, y))  # let go at 611.4 + 60 = 671.4
+    kata.run(32)  # 0.5 s of fall, 320 px further right
+    assert kata.window.pos() == on_floor(991)  # 991.4, rounded
+    assert kata.animation() == "idle"
+
+
+def test_a_hard_flick_stops_at_the_screen_edge(kata: Rig) -> None:
+    x, y = lift(kata, 300)
+    for k in range(1, 7):  # 20 px right each tick: 1280 px/s, enough to fly 640 px
+        kata.run(1)
+        kata.move((x + 20 * k, y))
+    kata.release((x + 20 * k, y))
+    kata.run(32)
+    assert kata.window.x() + kata.window.width() == AREA.x + AREA.w
+    assert kata.window.y() == on_floor(611).y()
+    assert kata.animation() == "idle"
+
+
+def test_a_falling_kata_is_caught_by_a_press_and_a_move(kata: Rig) -> None:
+    above = lift(kata, 300)
+    kata.run(32)
+    kata.release(above)
+    kata.run(10)
+    assert kata.animation() == "fall"
+    before = kata.window.pos()
+    x, y = kata.scruff()
+    kata.press((x, y))
+    kata.run(1)
+    assert kata.window.y() > before.y()  # a press alone doesn't stop the fall
+    kata.move((x + 20, y))  # a drag: the scruff jumps back under the pointer
+    assert kata.window.pos() == before + QPoint(20, 0)
+    assert kata.animation() == "held"
+    assert kata.logged[-1][0] == "grab"
+    kata.run(30)
+    assert kata.window.pos() == before + QPoint(20, 0)  # held in mid-air, not falling
+
+
+def test_dragging_past_the_screen_edges_keeps_the_window_on_the_desktop(kata: Rig) -> None:
+    x, y = kata.scruff()
+    kata.press((x, y))
+    kata.run(1)
+    kata.move((-400.3, y))
+    assert kata.window.x() == AREA.x
+    kata.run(1)
+    kata.move((-400.3, -250.6))
+    assert kata.window.pos() == QPoint(AREA.x, AREA.y)
+    kata.run(1)
+    kata.move((2000.2, -250.6))
+    assert kata.window.x() + kata.window.width() == AREA.x + AREA.w
+    assert kata.window.y() == AREA.y
+    kata.run(1)
+    kata.move((2000.2, 1500.7))  # the feet stop on the floor
+    assert kata.window.x() + kata.window.width() == AREA.x + AREA.w
+    assert kata.window.y() == on_floor(611).y()
+
+
+def test_a_right_button_press_does_not_start_a_drag(kata: Rig) -> None:
+    start = kata.window.pos()
+    x, y = kata.scruff()
+    kata.press((x, y), RIGHT)
+    kata.run(1)
+    kata.move((x + 50, y), RIGHT)
+    kata.run(1)
+    kata.release((x + 50, y), RIGHT)
+    kata.run(30)
+    assert kata.window.pos() == start
+    assert kata.animation() == "idle"
+    assert kata.clicks == 0
+    assert kata.logged == []
+
+
+def test_a_move_with_no_button_down_counts_as_the_release(kata: Rig) -> None:
+    # The release went to another window, after Alt+Tab for example. Held still first, since
+    # the lift itself, 300 px in one tick, would count as a fast throw upwards.
+    above = lift(kata, 300)
+    kata.run(32)
+    kata.move(above, NO_BUTTON)
+    assert kata.animation() == "fall"
+    kata.run(32)
+    assert kata.window.pos() == on_floor(611)
+    assert kata.animation() == "idle"
+
+
+def test_a_floor_that_rises_lifts_kata_onto_it(kata: Rig) -> None:
+    shorter = Rect(AREA.x, AREA.y, AREA.w, AREA.h - 20)  # a taskbar appears: the floor is row 700
+    kata.desktop = Desktop(area=shorter, screens=(shorter,))
+    kata.run(1)
+    assert kata.window.pos() == on_floor(611) - QPoint(0, 20)
+
+
+def test_the_log_records_the_grab_the_release_and_the_landing(kata: Rig) -> None:
+    above = lift(kata, 300)
+    kata.run(32)
+    kata.release(above)
+    kata.run(32)
+    bounds = feet_bounds(AREA, SHEET, SCALE)
+    edges = (bounds.left, bounds.right, bounds.top)
+    assert kata.logged == [
+        ("grab", {"feet": (611.4, 420.0), "floor": FLOOR, "bounds": edges}),
+        ("release", {"feet": (611.4, 420.0), "speed": (0.0, 0.0), "floor": FLOOR, "bounds": edges}),
+        ("landed", {"feet": (611.4, 720.0), "floor": FLOOR}),
+    ]
