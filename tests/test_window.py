@@ -43,7 +43,7 @@ NO_BUTTON = Qt.MouseButton.NoButton
 class Rig:
     """A PetWindow with a fake clock, a made-up desktop, a recording log, and a mouse."""
 
-    def __init__(self) -> None:
+    def __init__(self, physics: PhysicsConfig = PHYSICS) -> None:
         self.now = 10.0
         self.desktop = Desktop(area=AREA, screens=(AREA,))
         self.logged: list[tuple[str, dict[str, object]]] = []
@@ -52,7 +52,7 @@ class Rig:
             load_frames(SHEET, SCALE),
             SHEET,
             SCALE,
-            Body(*START, PHYSICS),
+            Body(*START, physics),
             clock=lambda: self.now,
             desktop=lambda: self.desktop,
             log=self.log,
@@ -282,6 +282,26 @@ def test_a_floor_that_rises_lifts_kata_onto_it(kata: Rig) -> None:
     kata.desktop = Desktop(area=shorter, screens=(shorter,))
     kata.run(1)
     assert kata.window.pos() == on_floor(611) - QPoint(0, 20)
+
+
+def test_the_apps_own_physics_numbers_carry_and_drop_kata(app: QApplication) -> None:
+    # Every other test uses PHYSICS. This one uses the defaults app.py runs with, so a default that
+    # breaks carrying fails here: a negative release window, for one, makes Grip lose every sample.
+    kata = Rig(PhysicsConfig())
+    try:
+        x, y = lift(kata, 300)
+        for k in range(1, 4):
+            kata.run(1)
+            kata.move((x + 10 * k, y))
+        assert kata.window.pos() == on_floor(641) - QPoint(0, 300)  # 611.4 + 30, and lifted
+        kata.run(32)  # held still, so the drop has no speed
+        kata.release((x + 30, y))
+        kata.run(64)  # a second: plenty for a 300 px drop
+        assert kata.window.pos() == on_floor(641)
+        assert kata.animation() == "idle"
+        assert [event for event, _ in kata.logged] == ["grab", "release", "landed"]
+    finally:
+        kata.window.close()
 
 
 def test_the_log_records_the_grab_the_release_and_the_landing(kata: Rig) -> None:

@@ -41,7 +41,7 @@ A pixel-art desktop pet for Windows 10/11. Python 3.14+, PySide6 (Qt 6 Widgets).
 src/kata/
   __main__.py        entry point (exists)
   app.py             QApplication setup, wiring, tray (exists)
-  window.py          PetWindow: painting and mouse input (exists)
+  window.py          PetWindow: painting, the main tick, mouse input (exists)
   animator.py        current frame, looping and one-shot (exists)   no Qt
   sheet.py           reads kata.json into sprite facts (exists)     no Qt
   sprites.py         cuts kata.png into QPixmap frames (exists)
@@ -58,6 +58,7 @@ src/kata/
   preview.py         sprite preview (exists)
 tests/
   test_<module>.py   one per no-Qt module
+  test_window.py     PetWindow headless: fake clock, made-up mouse events (exists)
 tools/
   make_sprites.py    draws kata.png and kata.json (exists)
   inspect_kata.py    run-kata: measures Kata on the desktop (exists)
@@ -67,6 +68,7 @@ tools/
 
 - Type hints on everything, dataclasses for plain data, `pathlib` for paths.
 - ruff for lint and format, mypy in strict mode for types (settings for both in pyproject.toml). pytest for tests, files named `tests/test_<module>.py`; `tests/test_no_qt.py` checks the no-Qt rule itself.
+- Kata's window is tested headless. `tests/conftest.py` puts Qt on its offscreen platform, so no test opens a window. `tests/test_window.py` gives `PetWindow` a fake clock, a made-up desktop and synthetic mouse events, and calls `tick()` itself. Hand checks are for what this can't show: looks, feel, the menu, a second screen.
 - Conventional Commits: `feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`.
 - One branch per milestone (`m1-window`, `m2-drag`). It reaches `main` through a pull request once its CI is green, merged with "Create a merge commit". Squash would collapse the step commits that the plan refers to, and rebase would leave no record of the PR. Show me the PR's title and description before opening it, since they are public.
 

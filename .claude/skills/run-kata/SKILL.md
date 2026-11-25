@@ -30,7 +30,10 @@ LOG and PNG must be outside the repo; the tool refuses repo paths. Put them in t
 ```
 
 - `--launch LOG` starts `python -m kata` with `KATA_LOG=1` and no console window, waits for the
-  window, then reports. Kata keeps running after the tool exits.
+  window, then reports. Kata keeps running after the tool exits, and keeps writing to LOG: a
+  `grab`, `release`, `landed` or `click` line each time it is handled. Read LOG after the user's
+  drags: every `landed` should have feet y equal to its `floor`, and every `grab` and `release`
+  feet inside its `bounds` (left, right, top) and not below its `floor`.
 - `--capture PNG` saves the capture, and the outline it found as `<name>-outline.png`. Read
   both PNGs to see them.
 - `--cpu SECONDS` adds a `cpu` line after the report: the CPU time Kata used over that many
@@ -42,7 +45,7 @@ LOG and PNG must be outside the repo; the tool refuses repo paths. Put them in t
 Coordinates are physical pixels unless the line says Qt. Qt units are physical pixels divided
 by the scale (1.5 at 150%).
 
-| Line | What it says | Good for M1 |
+| Line | What it says | Good since M1 |
 | :-- | :-- | :-- |
 | `focus` | The foreground window before the launch and after it (`--launch` only) | `kept` |
 | `log` | Kata's KATA_LOG lines (`--launch` only) | `placed` with feet y = area y + height |
@@ -56,7 +59,7 @@ by the scale (1.5 at 150%).
 | `drawn pixel` | The same, for an outline pixel near Kata's centre | `= Kata` |
 | `floor` | The lowest drawn row against the floor row | gap 0 |
 | `ground line` | Where the sprite's ground line lands: window top + ground_y x scale x screen scale | within 1 px of the floor row |
-| `cpu` | CPU time Kata's process used over the measurement, as a percentage of one core and of all cores; the second is Task Manager's figure (`--cpu` only) | at rest, about 1% of one core: M1's baseline was 1.09%, which is 0.07% of all 16 cores |
+| `cpu` | CPU time Kata's process used over the measurement, as a percentage of one core and of all cores; the second is Task Manager's figure (`--cpu` only) | at rest, about 1% of one core: M1's baseline was 1.09% over 10 s (0.07% of all 16 cores); M2 read 1.41% and 0.78% over 30 s |
 
 The step 4 calibration of M1 (2026-11-24) matched the user's hand checks on every line it
 measures.
