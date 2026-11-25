@@ -46,9 +46,10 @@ src/kata/
   sheet.py           reads kata.json into sprite facts (exists)     no Qt
   sprites.py         cuts kata.png into QPixmap frames (exists)
   body.py            feet, velocity, gravity, landing (exists)      no Qt
+  drag.py            click or drag, and the release speed (exists)  no Qt
   brain.py           behaviour state machine                        no Qt
   platforms.py       floors and window tops Kata can stand on       no Qt
-  geometry.py        window placement: floor, start spot (exists)   no Qt
+  geometry.py        placement: floors, grip, bounds (exists)       no Qt
   settings.py        load and save user settings                    no Qt
   switches.py        developer switches, KATA_LOG lines (exists)    no Qt
   crashlog.py        uncaught crashes appended to a file            no Qt

@@ -50,6 +50,7 @@ source = ["kata"]
 include = [
     "*/kata/animator.py",
     "*/kata/body.py",
+    "*/kata/drag.py",
     "*/kata/geometry.py",
     "*/kata/sheet.py",
     "*/kata/switches.py",
