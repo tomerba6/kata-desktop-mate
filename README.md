@@ -53,7 +53,7 @@ Calling `.venv\Scripts\python` directly means you never have to activate the vir
 | `tests/test_inspect_kata.py` | Checks the pure helpers of `inspect_kata.py` |
 | `tests/conftest.py` | Hypothesis profiles, including the repeatable `ci` one |
 | `tools/make_sprites.py` | Draws the sprite sheet from code |
-| `tools/inspect_kata.py` | Measures Kata on the real desktop: window styles, focus, click-through, paws on the floor. Read-only |
+| `tools/inspect_kata.py` | Measures Kata on the real desktop: window styles, focus, click-through, paws on the floor, CPU use. Read-only |
 | `.claude/skills/run-kata/SKILL.md` | Tells Claude Code when and how to use `inspect_kata.py` |
 | `docs/sprites-preview.png` | Enlarged contact sheet of every frame |
 | `docs/plans/` | One plan per milestone, with its steps, decisions and session log |

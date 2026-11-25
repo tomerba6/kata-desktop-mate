@@ -14,7 +14,7 @@ A pixel-art desktop pet for Windows 10/11. Python 3.14+, PySide6 (Qt 6 Widgets).
 - Mutation testing, by hand and not in CI (settings in `cosmic-ray.toml`). It changes the no-Qt modules on disk, runs the suite once per change and puts them back. Run `.venv\Scripts\cosmic-ray init cosmic-ray.toml mutation.sqlite --force`, then `.venv\Scripts\cosmic-ray exec cosmic-ray.toml mutation.sqlite`, then `.venv\Scripts\cr-report mutation.sqlite`. Every job must end killed or survived; `incompetent` means the test command never started.
 - Format: `.venv\Scripts\python -m ruff format .`
 - Redraw the sprites: `.venv\Scripts\python tools\make_sprites.py`
-- Measure Kata on the desktop (the run-kata skill, `.claude/skills/run-kata/SKILL.md`): `.venv\Scripts\python tools\inspect_kata.py --launch LOG --capture PNG` to start Kata and report, the same without `--launch` to report on a running Kata, and `--kill` to stop it. LOG and PNG go in the scratchpad, never the repo. It is read-only: it never clicks or types.
+- Measure Kata on the desktop (the run-kata skill, `.claude/skills/run-kata/SKILL.md`): `.venv\Scripts\python tools\inspect_kata.py --launch LOG --capture PNG` to start Kata and report, the same without `--launch` to report on a running Kata, and `--kill` to stop it. Add `--cpu SECONDS` to a report to measure Kata's CPU use. LOG and PNG go in the scratchpad, never the repo. It is read-only: it never clicks or types.
 
 ## Working agreement
 
