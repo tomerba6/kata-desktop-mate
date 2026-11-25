@@ -312,10 +312,10 @@ def frames_idle() -> list[Canvas]:
 def frames_walk() -> list[Canvas]:
     def foot(p: float) -> tuple[int, int]:
         p %= 1.0
-        if p < 0.5:  # on the ground, sliding back
-            return round(3 - 12 * p), 0
-        q = (p - 0.5) / 0.5  # in the air, swinging forward
-        return round(-3 + 6 * q), round(2 * math.sin(q * math.pi))
+        if p < 0.5:  # on the ground, sliding back half a stride, from +STRIDE/4 to -STRIDE/4
+            return round(STRIDE / 4 - STRIDE * p), 0
+        q = (p - 0.5) / 0.5  # in the air, swinging forward again
+        return round(-STRIDE / 4 + STRIDE / 2 * q), round(2 * math.sin(q * math.pi))
 
     out = []
     for i in range(8):
@@ -423,6 +423,9 @@ ANIMATIONS = [
     ("fall", frames_fall, 8, True),
 ]
 HELD_ANCHOR = (22, 21)  # the scruff of the neck in "held" frames: put the cursor here
+# Sprite pixels a planted paw slides back per walk loop. The app walks Kata forward as far per
+# loop (kata.sheet.walk_speed), so the paws stay put on the floor.
+STRIDE = 12
 
 
 def build(root: Path) -> None:
@@ -442,6 +445,7 @@ def build(root: Path) -> None:
             sheet.paste(canvas.finish(), (col * FRAME, row * FRAME))
         animations[name] = {"row": row, "frames": len(frames), "fps": fps, "loop": loop}
     animations["held"]["anchor"] = list(HELD_ANCHOR)
+    animations["walk"]["stride"] = STRIDE
 
     assets = root / "src" / "kata" / "assets"
     assets.mkdir(parents=True, exist_ok=True)
