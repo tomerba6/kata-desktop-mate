@@ -99,15 +99,6 @@ class Rig:
         QApplication.sendEvent(self.window, event)
 
 
-@pytest.fixture(scope="session")
-def app() -> QApplication:
-    existing = QApplication.instance()
-    if existing is None:
-        return QApplication([])
-    assert isinstance(existing, QApplication)
-    return existing
-
-
 @pytest.fixture
 def kata(app: QApplication) -> Iterator[Rig]:
     rig = Rig()
