@@ -4,7 +4,7 @@
 
 Kata is a pixel-art fox that will live on your Windows desktop: standing on the taskbar, wandering, sitting, napping, hopping when clicked, and riding on other windows.
 
-Right now Kata lives along the bottom of your screen, in a window that doesn't look like one: no title bar, no border, no taskbar button, see-through around the fox and always on top. Left alone, it walks left and right, turning at the screen's edges, sits, and naps with Zs after a quiet spell; a click wakes it. Pick it up with the left button and it dangles by the scruff; let go and it falls and lands, or flick it and it flies, without ever leaving the screen. You can catch it in mid-air. Right-click it, then Quit, to close it. The rest gets built milestone by milestone in Claude Code. The roadmap is in [BRIEF.md](BRIEF.md).
+Right now Kata lives along the bottom of your screen, in a window that doesn't look like one: no title bar, no border, no taskbar button, see-through around the fox and always on top. Left alone, it walks left and right, turning at the screen's edges, sits, and naps with Zs after a quiet spell. Click it and it hops with hearts, then carries on with what it was doing; a click on a napping Kata wakes it. Pick it up with the left button and it dangles by the scruff; let go and it falls and lands, or flick it and it flies, without ever leaving the screen. You can catch it in mid-air. Right-click it, then Quit, to close it. The rest gets built milestone by milestone in Claude Code. The roadmap is in [BRIEF.md](BRIEF.md).
 
 ![Kata's animations](docs/sprites-preview.png)
 
@@ -38,8 +38,8 @@ Calling `.venv\Scripts\python` directly means you never have to activate the vir
 | `src/kata/assets/kata.png` | The sprite sheet: 7 animations, 48x48 frames |
 | `src/kata/assets/kata.json` | Which row is which animation, frame counts, speeds, the walk's stride |
 | `src/kata/app.py` | Starts Kata: loads the frames, stands Kata on the floor, hands the window a brain, the clock, the desktop and the log. `python -m kata` runs it |
-| `src/kata/window.py` | Kata's window: frameless, see-through, on top. Draws the current frame facing Kata's way, runs the tick (16 ms, about 60 Hz) that carries out what the brain decides, and handles picking up, carrying and throwing |
-| `src/kata/brain.py` | Kata's brain: idle, walk, sit and sleep, how long each lasts and what comes next, and held and fall from the window's events. No Qt |
+| `src/kata/window.py` | Kata's window: frameless, see-through, on top. Draws the current frame facing Kata's way, runs the tick (16 ms, about 60 Hz) that carries out what the brain decides, and handles clicks, picking up, carrying and throwing |
+| `src/kata/brain.py` | Kata's brain: idle, walk, sit and sleep, how long each lasts and what comes next, the hop when clicked, and held and fall from the window's events. No Qt |
 | `src/kata/body.py` | Kata's body: the feet point, walking, its speed in the air, gravity, landing, the screen edges. No Qt |
 | `src/kata/drag.py` | One press of the mouse: a click or a drag, and how fast it was let go. No Qt |
 | `src/kata/animator.py` | Which frame to show, from elapsed time; looping and one-shot animations. No Qt |
@@ -49,7 +49,7 @@ Calling `.venv\Scripts\python` directly means you never have to activate the vir
 | `src/kata/sprites.py` | Cuts the sheet into frames, and flips them for facing left |
 | `src/kata/preview.py` | A plain window that plays each animation. `python -m kata.preview` runs it |
 | `tests/test_animator.py`, `test_body.py`, `test_brain.py`, `test_drag.py`, `test_geometry.py`, `test_switches.py` | Tests for those six modules; the animator, body, brain and geometry ones include Hypothesis property tests, and the brain's include 180 seeded ten-minute runs |
-| `tests/test_window.py` | Drives Kata's window headless, with a fake clock and made-up mouse events: carry, drop, throw, catch, click, the screen edges, walking and turning, and ten minutes left alone |
+| `tests/test_window.py` | Drives Kata's window headless, with a fake clock and made-up mouse events: carry, drop, throw, catch, a click and its hop, fast clicks, the screen edges, walking and turning, and ten minutes of Kata's own behaviour, with clicks in the first two minutes |
 | `tests/test_sheet.py` | Checks that the JSON is read correctly |
 | `tests/test_sprites.py` | Checks that the JSON matches the PNG, and that frames are cut, scaled and mirrored pixel for pixel |
 | `tests/test_make_sprites.py` | Checks that the committed sheet is what `make_sprites.py` draws |
