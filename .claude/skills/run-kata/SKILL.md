@@ -40,7 +40,14 @@ LOG and PNG must be outside the repo; the tool refuses repo paths. Put them in t
   - every `grab` and `release` should have feet inside its `bounds` (left, right, top) and not
     below its `floor`;
   - every `state` line's feet should be inside those bounds too;
-  - a click that woke a nap is a `click` line followed by `state from=sleep to=idle`.
+  - a click on an idle, walking or sitting Kata is a `click` line, then `state to=happy`. About
+    0.67 s later, the hop's 8 frames at 12 fps, comes `from=happy` back to the same state and
+    facing, with the same feet, since Kata hops on the spot. Only a grab or a fall ends a hop
+    anywhere else;
+  - a click that woke a nap is a `click` line followed by `state from=sleep to=idle`, with no hop;
+  - a click mid-hop, or while Kata is held or falling, gets a `click` line and no `state` line;
+  - each line reads the clock as it is written, so a `click` and the `state` line it causes can
+    be a millisecond or two apart. Pair them within a few milliseconds, not by equal times.
 - `--capture PNG` saves the capture, and the outline it found as `<name>-outline.png`. Read
   both PNGs to see them.
 - `--cpu SECONDS` adds a `cpu` line after the report: the CPU time Kata used over that many

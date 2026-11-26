@@ -18,7 +18,7 @@ Kata is a pixel-art fox that lives on the Windows desktop. This brief is the roa
 - [x] M1 Kata on the desktop
 - [x] M2 Pick up, carry, drop
 - [x] M3 Wander, sit, sleep
-- [ ] M4 React to a click
+- [x] M4 React to a click
 - [ ] M5 Tray menu and settings
 - [ ] M6 Start with Windows
 - [ ] M7 Stand on windows
@@ -82,21 +82,7 @@ Done. The plan, with its decisions, what was measured on the way and what was le
 
 **Goal:** click Kata, get a happy hop.
 
-**Build**
-
-- On `clicked`, the brain enters `HAPPY`: play `happy` once, then return to the state it interrupted when the animator reports `finished`.
-- Clicking a sleeping Kata wakes it first.
-- Clicks are ignored during `HELD` and `FALL`.
-
-**Check by hand**
-
-- One click: one hop with hearts, then back to what it was doing.
-- Ten fast clicks do not leave it stuck or stacked.
-
-**Tests**
-
-- `HAPPY` returns to the interrupted state; clicks in `HELD` and `FALL` change nothing; click during `SLEEP` wakes.
-- The M3 stateful test (`tests/test_brain.py`) already sends `clicked()`; it also checks that, whatever the sequence of clicks, the brain leaves `HAPPY` once `happy` finishes, so no sequence leaves it stuck.
+Done. The plan, with its decisions and what was measured on the way: [docs/plans/2026-11-26-m4-click.md](docs/plans/2026-11-26-m4-click.md). A click on a nap wakes Kata without a hop, and clicks during a hop are ignored.
 
 ### M5 Tray menu and settings
 
