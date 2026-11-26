@@ -30,10 +30,17 @@ LOG and PNG must be outside the repo; the tool refuses repo paths. Put them in t
 ```
 
 - `--launch LOG` starts `python -m kata` with `KATA_LOG=1` and no console window, waits for the
-  window, then reports. Kata keeps running after the tool exits, and keeps writing to LOG: a
-  `grab`, `release`, `landed` or `click` line each time it is handled. Read LOG after the user's
-  drags: every `landed` should have feet y equal to its `floor`, and every `grab` and `release`
-  feet inside its `bounds` (left, right, top) and not below its `floor`.
+  window, then reports. Kata keeps running after the tool exits, and keeps writing to LOG:
+  - a `grab`, `release`, `landed` or `click` line each time it is handled;
+  - a `state` line (`from`, `to`, `facing`, `feet`) whenever its state or facing changes. A turn
+    mid-walk is `from=walk to=walk`. A state picked again, such as idle after idle, gets no line.
+
+  Read LOG after the user's checks:
+  - every `landed` should have feet y equal to its `floor`;
+  - every `grab` and `release` should have feet inside its `bounds` (left, right, top) and not
+    below its `floor`;
+  - every `state` line's feet should be inside those bounds too;
+  - a click that woke a nap is a `click` line followed by `state from=sleep to=idle`.
 - `--capture PNG` saves the capture, and the outline it found as `<name>-outline.png`. Read
   both PNGs to see them.
 - `--cpu SECONDS` adds a `cpu` line after the report: the CPU time Kata used over that many
@@ -59,7 +66,7 @@ by the scale (1.5 at 150%).
 | `drawn pixel` | The same, for an outline pixel near Kata's centre | `= Kata` |
 | `floor` | The lowest drawn row against the floor row | gap 0 |
 | `ground line` | Where the sprite's ground line lands: window top + ground_y x scale x screen scale | within 1 px of the floor row |
-| `cpu` | CPU time Kata's process used over the measurement, as a percentage of one core and of all cores; the second is Task Manager's figure (`--cpu` only) | at rest, about 1% of one core: M1's baseline was 1.09% over 10 s (0.07% of all 16 cores); M2 read 1.41% and 0.78% over 30 s |
+| `cpu` | CPU time Kata's process used over the measurement, as a percentage of one core and of all cores; the second is Task Manager's figure (`--cpu` only) | about 1% of one core: M1's baseline was 1.09% over 10 s (0.07% of all 16 cores); M2 read 1.41% and 0.78% over 30 s at rest; M3 read 1.46% over 30 s while Kata wandered |
 
 The step 4 calibration of M1 (2026-11-24) matched the user's hand checks on every line it
 measures.
@@ -89,6 +96,11 @@ measures.
     core. Measure 30 s or more to compare small differences.
   - Only the interpreter process, which owns the window, is measured. The venv's launcher
     process is not counted.
-  - For the idle figure, make sure nobody is dragging Kata during the measurement.
+  - Since M3, Kata wanders on its own, so a measurement covers whatever it did meanwhile
+    (`state` lines in LOG show what). Make sure nobody is dragging Kata during it.
+- **Clicks for hand checks:** ask the user to click Kata's body itself. A click on a see-through
+  pixel around Kata goes to the window behind it (the `see-through pixel` line), so Kata never
+  hears it. In M3, a "click woke the nap" pass turned out to be a nap ending on its own; the log
+  showed no click.
 - **Clean up:** run `--kill` when done, unless the user is about to check Kata by hand.
   `--launch` refuses while Kata is already running.
