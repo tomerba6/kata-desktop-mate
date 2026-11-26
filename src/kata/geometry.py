@@ -70,6 +70,11 @@ def grip_feet(
     return left + sheet.frame_w * scale // 2, top + sheet.ground_y * scale
 
 
+def mirrored_anchor(anchor: tuple[int, int], sheet: SheetInfo) -> tuple[int, int]:
+    """Where an anchor pixel is in the frame flipped left to right: the same row, columns reversed."""
+    return sheet.frame_w - 1 - anchor[0], anchor[1]
+
+
 def feet_bounds(desktop: Rect, sheet: SheetInfo, scale: int) -> Bounds:
     """How far the feet may go while the window's left, right and top edges stay on the desktop."""
     width = sheet.frame_w * scale
@@ -81,12 +86,13 @@ def feet_bounds(desktop: Rect, sheet: SheetInfo, scale: int) -> Bounds:
     )
 
 
-def floor_under(feet: tuple[float, float], areas: Sequence[Rect]) -> int:
-    """The floor of the screen Kata is over: the first floor at or below the feet.
+def area_under(feet: tuple[float, float], areas: Sequence[Rect]) -> Rect:
+    """The screen Kata is over: the one with the first floor at or below the feet.
 
     `areas` are the screens' usable areas. Only screens whose columns hold the feet count; if
     none does, the nearest screens sideways stand in. If no floor is at or below the feet (carried
-    below a shorter screen's floor), the lowest of them is used.
+    below a shorter screen's floor), the one with the lowest floor is used. Kata walks on this
+    screen and no further.
     """
     column, y = math.floor(feet[0]), feet[1]
 
@@ -95,6 +101,11 @@ def floor_under(feet: tuple[float, float], areas: Sequence[Rect]) -> int:
         return max(area.x - column, column - (area.x + area.w - 1), 0)
 
     nearest = min(columns_away(area) for area in areas)
-    floors = [floor_y(area) for area in areas if columns_away(area) == nearest]
-    at_or_below = [floor for floor in floors if floor >= y]
-    return min(at_or_below) if at_or_below else max(floors)
+    candidates = [area for area in areas if columns_away(area) == nearest]
+    at_or_below = [area for area in candidates if floor_y(area) >= y]
+    return min(at_or_below, key=floor_y) if at_or_below else max(candidates, key=floor_y)
+
+
+def floor_under(feet: tuple[float, float], areas: Sequence[Rect]) -> int:
+    """The floor of the screen Kata is over (area_under): the first floor at or below the feet."""
+    return floor_y(area_under(feet, areas))

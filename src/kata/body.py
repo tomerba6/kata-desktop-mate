@@ -6,9 +6,11 @@ worked out exactly for constant gravity, with the speed capped, so where Kata is
 how the time was cut into steps.
 
 A body is standing or airborne. Standing, it stays on the floor, and follows it up if the floor
-rises (a taskbar appearing). If the floor drops away, it starts to fall. A throw or a hold makes
-it airborne, and step() reports True on the step it lands. Landing stops all motion; hitting a side
-edge stops only the sideways speed, and hitting the top stops upward speed.
+rises (a taskbar appearing). It walks sideways at the speed step() is given, and it stays between
+the bounds' left and right, so narrower bounds pull it in. If the floor drops away, it starts to
+fall, straight down: the walk doesn't carry into the fall. A throw or a hold makes it airborne,
+and step() reports True on the step it lands. Landing stops all motion; hitting a side edge stops
+only the sideways speed, and hitting the top stops upward speed.
 
 This module is plain Python with no Qt, so it is tested without a window.
 """
@@ -60,13 +62,17 @@ class Body:
         self.vx, self.vy = vx * scale, vy * scale
         self._airborne = True
 
-    def step(self, dt: float, floor_y: float, bounds: Bounds) -> bool:
-        """Move on by dt seconds. True on the step the body lands, and only then."""
+    def step(self, dt: float, floor_y: float, bounds: Bounds, walk: float = 0.0) -> bool:
+        """Move on by dt seconds, walking at `walk` per second if standing (negative is left).
+
+        True on the step the body lands, and only then.
+        """
         if dt < 0:
             raise ValueError(f"dt must not be negative, got {dt}")
         if not self._airborne:
             if self.y >= floor_y:
                 self.y = floor_y  # follow a floor that rose
+                self.x = min(max(self.x + walk * dt, bounds.left), bounds.right)
                 return False
             self._airborne = True  # the floor dropped away
 
