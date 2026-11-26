@@ -4,7 +4,7 @@ Most tests steer the brain with Scripted, a random.Random whose random() returns
 test lists. Random.uniform and the weighted Random.choices both draw through random() (checked in
 CPython 3.14's source), so the brain's own calls run unchanged. The brain draws, in order: a time
 for each state it enters (a fraction of the way through that state's range), a weighted pick when
-a state's time is up, and a coin when a walk starts (below 0.5 heads right).
+a state's time is up, and a coin when a walk starts (below 0.5 heads right). A hop draws nothing.
 
 The tests' BehaviourConfig is their own, so tuning the app's defaults doesn't break them. Its times
 are exact in binary, so the expected times are exact too. The seeded runs at the end use the
@@ -22,6 +22,7 @@ import pytest
 from hypothesis import strategies as st
 from hypothesis.stateful import RuleBasedStateMachine, initialize, invariant, rule
 
+from kata.animator import Animator
 from kata.body import Body, PhysicsConfig
 from kata.brain import BehaviourConfig, Brain, Facing, State, Weights
 from kata.geometry import Bounds
@@ -108,6 +109,55 @@ def asleep(*more: float) -> Brain:
     run(b, 16.0)
     assert b.state is State.SLEEP
     return b
+
+
+def idling() -> Brain:
+    """A brain 1.25 s into an idle of 3.3125 s."""
+    b = brain(0.25)
+    run(b, 1.25)
+    return b
+
+
+def walking_left() -> Brain:
+    """A brain 1 s into a walk of 3.5 s, heading left."""
+    return walking(LEFTWARD)
+
+
+def sitting() -> Brain:
+    """A brain 1 s into a sit of 5.75 s."""
+    b = brain(0.0, pick(State.SIT, CONFIG.after_idle), 0.0)
+    run(b, 2.25 + 1.0)
+    assert b.state is State.SIT
+    return b
+
+
+def hopping() -> Brain:
+    """A brain hopping, clicked 1 s into a walk heading right."""
+    b = walking()
+    b.clicked()
+    return b
+
+
+def held() -> Brain:
+    """A brain picked up while it idled."""
+    b = brain(0.0)
+    b.grabbed()
+    return b
+
+
+def falling() -> Brain:
+    """A brain falling: its floor dropped away 1 s into a walk."""
+    b = walking()
+    b.released(0.0)
+    return b
+
+
+type Snapshot = tuple[State, Facing, float, float]
+
+
+def snapshot(b: Brain) -> Snapshot:
+    """What the brain is doing, which way it faces, and how far into it it is."""
+    return b.state, b.facing, b.elapsed, b.time_left
 
 
 # --- Starting, and the time each state lasts -----------------------------------------------------
@@ -214,6 +264,7 @@ def quiet_since(event: str, *draws: float) -> Brain:
     if event == "click":
         b = brain(*draws)
         b.clicked()
+        b.finished()  # the hop
         return b
     if event == "grab":
         b = brain(0.0, *draws)
@@ -239,28 +290,27 @@ def test_the_quiet_spell_counts_from_zero(event: str) -> None:
 # --- What the window tells it -------------------------------------------------------------------
 
 
-def test_a_click_wakes_a_sleeping_kata_into_idle() -> None:
+def test_a_click_wakes_a_sleeping_kata_into_idle_with_no_hop() -> None:
     b = asleep()
     b.clicked()
-    assert b.state is State.IDLE
-
-
-def test_a_click_on_an_awake_kata_changes_nothing_it_is_doing() -> None:
-    b = brain(0.25)
-    run(b, 1.25)
-    b.clicked()
-    assert (b.state, b.elapsed, b.time_left) == (State.IDLE, 1.25, 3.3125 - 1.25)
+    awake = snapshot(b)
+    assert awake == (State.IDLE, Facing.RIGHT, 0.0, 2.25)
+    b.clicked()  # the next click hops
+    assert snapshot(b) == (State.HAPPY, Facing.RIGHT, 0.0, math.inf)
+    b.finished()
+    assert snapshot(b) == awake
 
 
 def test_a_click_mid_sit_restarts_the_quiet_spell() -> None:
     b = brain(*TWO_ROUNDS, pick(State.WALK, CONFIG.after_sit))
     run(b, 15.0)  # in the second sit, 1 s before it ends
     b.clicked()
+    b.finished()  # the hop
     run(b, 1.0)  # the sit ends after 1 s of quiet, not 16: no nap
     assert b.state is State.WALK
 
 
-@pytest.mark.parametrize("make", [brain, walking, asleep])
+@pytest.mark.parametrize("make", [brain, walking, asleep, hopping])
 def test_a_grab_holds_kata_whatever_it_was_doing(make: Callable[[], Brain]) -> None:
     b = make()
     b.grabbed()
@@ -282,13 +332,14 @@ def test_a_release_drops_kata_and_a_landing_stands_it_idle() -> None:
     assert b.time_left == along(CONFIG.idle_time, 0.5)
 
 
-def test_a_floor_dropping_away_drops_a_standing_kata() -> None:
-    b = walking()
+@pytest.mark.parametrize("make", [walking, hopping])
+def test_a_floor_dropping_away_drops_a_standing_kata(make: Callable[[], Brain]) -> None:
+    b = make()
     b.released(0.0)
     assert b.state is State.FALL
 
 
-@pytest.mark.parametrize("make", [brain, walking, asleep])
+@pytest.mark.parametrize("make", [brain, walking, asleep, hopping])
 def test_a_landing_means_nothing_unless_kata_is_falling(make: Callable[[], Brain]) -> None:
     b = make()
     before = (b.state, b.elapsed, b.time_left)
@@ -319,6 +370,123 @@ def test_a_throw_turns_kata_to_face_its_flight() -> None:
     b.grabbed()
     b.released(250.0)
     assert (b.state, b.facing) == (State.FALL, Facing.RIGHT)
+
+
+# --- A click: a hop -----------------------------------------------------------------------------
+
+AWAKE = [idling, walking, walking_left, sitting]
+
+
+@pytest.mark.parametrize("make", AWAKE)
+def test_a_click_on_an_awake_kata_starts_a_hop_on_the_spot(make: Callable[[], Brain]) -> None:
+    b = make()
+    facing = b.facing
+    b.clicked()
+    assert snapshot(b) == (State.HAPPY, facing, 0.0, math.inf)
+    assert (b.animation, b.walk_velocity) == ("happy", 0.0)
+
+
+@pytest.mark.parametrize("make", AWAKE)
+def test_when_the_hop_finishes_kata_carries_on_where_it_left_off(make: Callable[[], Brain]) -> None:
+    b = make()
+    before = snapshot(b)
+    b.clicked()
+    b.finished()
+    assert snapshot(b) == before
+
+
+def test_time_stands_still_for_the_interrupted_state_during_a_hop() -> None:
+    b = walking()  # 1 s into a walk of 3.5 s, heading right
+    before = snapshot(b)
+    b.clicked()
+    run(b, 100.0, x=RANGE[1])  # far past the walk's end, at the right end of the range
+    assert snapshot(b) == (State.HAPPY, Facing.RIGHT, 0.0, math.inf)
+    b.finished()
+    assert snapshot(b) == before  # the same walk, heading the same way
+
+
+def test_a_long_hop_does_not_count_towards_the_quiet_spell() -> None:
+    b = brain(*TWO_ROUNDS, pick(State.WALK, CONFIG.after_sit))
+    run(b, 15.0)  # in the second sit, 1 s before it ends
+    b.clicked()  # the quiet spell restarts
+    run(b, 100.0)  # a hop as long as this never happens, but the spell stays at 0 through it
+    b.finished()
+    run(b, 1.0)  # the sit ends after 1 s of quiet: no nap
+    assert b.state is State.WALK
+
+
+def test_a_hop_draws_nothing_from_the_random() -> None:
+    # After the walk come a pick and a sit's time. Had the hop drawn a number, the pick would get
+    # the sit's 0.125, which lands on idle.
+    b = brain(
+        0.0,  # idle 2.25
+        pick(State.WALK, CONFIG.after_idle),
+        0.0,  # walk 3.5
+        RIGHTWARD,
+        pick(State.SIT, CONFIG.after_walk),
+        0.125,  # the sit's time
+    )
+    run(b, 2.25 + 1.0)  # 1 s into a walk of 3.5 s
+    b.clicked()
+    b.finished()
+    run(b, 2.5)  # the rest of the walk
+    assert (b.state, b.time_left) == (State.SIT, along(CONFIG.sit_time, 0.125))
+
+
+def test_clicks_during_a_hop_are_ignored_so_one_finish_ends_it() -> None:
+    b = walking()
+    before = snapshot(b)
+    b.clicked()
+    for _ in range(10):
+        b.clicked()
+    assert snapshot(b) == (State.HAPPY, Facing.RIGHT, 0.0, math.inf)
+    b.finished()
+    assert snapshot(b) == before  # not stuck hopping, and no hop stacked on another
+    b.finished()
+    assert snapshot(b) == before
+
+
+@pytest.mark.parametrize("make", [idling, walking, sitting, asleep, held, falling])
+def test_a_finish_means_nothing_unless_kata_is_hopping(make: Callable[[], Brain]) -> None:
+    b = make()
+    before = snapshot(b)
+    b.finished()
+    assert snapshot(b) == before
+
+
+@pytest.mark.parametrize("make", [held, falling])
+def test_a_click_while_held_or_falling_changes_nothing(make: Callable[[], Brain]) -> None:
+    b = make()
+    before = snapshot(b)
+    b.clicked()
+    assert snapshot(b) == before
+
+
+def test_a_click_while_falling_does_not_restart_the_quiet_spell() -> None:
+    b = brain(0.0, 0.0, pick(State.SIT, CONFIG.after_idle), 0.9375)
+    run(b, 2.0)  # 2 s of quiet
+    b.released(0.0)  # the floor drops away
+    b.clicked()
+    b.landed()  # idle for 2.25 s, then a sit of 5.75 + 0.9375 x 6.75 = 12.078125 s
+    run(b, 2.25 + 12.078125)  # the sit ends with 16.328125 s of quiet: a nap
+    assert b.state is State.SLEEP  # restarted by the click, the spell would be 14.328125 s
+
+
+def test_a_grab_mid_hop_cancels_it_and_after_the_fall_kata_stands_idle() -> None:
+    b = brain(0.0, pick(State.WALK, CONFIG.after_idle), 0.0, RIGHTWARD, then=0.5)
+    run(b, 2.25 + 1.0)  # 1 s into a walk
+    b.clicked()
+    b.grabbed()
+    b.finished()  # a hop cut short has nothing to go back to
+    assert snapshot(b) == (State.HELD, Facing.RIGHT, 0.0, math.inf)
+    b.released(0.0)
+    b.finished()
+    assert snapshot(b) == (State.FALL, Facing.RIGHT, 0.0, math.inf)
+    b.landed()
+    landed = snapshot(b)
+    assert landed == (State.IDLE, Facing.RIGHT, 0.0, along(CONFIG.idle_time, 0.5))  # not the walk
+    b.finished()
+    assert snapshot(b) == landed
 
 
 # --- Walking ------------------------------------------------------------------------------------
@@ -385,42 +553,79 @@ def longest(config: BehaviourConfig, state: State) -> float:
 
 
 class BrainMachine(RuleBasedStateMachine):
-    """Random sequences of updates and of what the window tells the brain."""
+    """Random sequences of updates and of what the window tells the brain.
+
+    An Animator over the real sheet stands in for the window's, wired the way PetWindow wires it:
+    it plays the brain's animation, advances on each update, and when it reports finished, the
+    brain is told.
+    """
 
     def __init__(self) -> None:
         super().__init__()
         self.brain = Brain(CONFIG, SPEED, random.Random(0))
+        self.animator = Animator(SHEET.animations, self.brain.animation)
         self.held = False
+        self.interrupted: Snapshot | None = None  # what the hop playing now interrupted
 
     @initialize(seed=st.integers(0, 2**32 - 1))
     def seed(self, seed: int) -> None:
         self.brain = Brain(CONFIG, SPEED, random.Random(seed))
+        self.animator = Animator(SHEET.animations, self.brain.animation)
+
+    def show(self) -> None:
+        """Play the brain's animation unless it is playing already, as PetWindow.follow_brain does."""
+        if self.animator.animation.name != self.brain.animation:
+            self.animator.play(self.brain.animation)
 
     @rule(dt=st.floats(0, 30), x=st.floats(RANGE[0], RANGE[1]))
     def update(self, dt: float, x: float) -> None:
         self.brain.update(dt, x, RANGE)
+        self.show()
+        self.animator.advance(dt)
+        if self.animator.finished:
+            self.brain.finished()
+            self.show()
+            assert self.interrupted is not None  # only the hop is a one-shot
+            assert snapshot(self.brain) == self.interrupted  # back to what the hop interrupted
+            self.interrupted = None
 
     @rule()
     def grabbed(self) -> None:
         self.brain.grabbed()
         self.held = True
+        self.interrupted = None  # a grab cancels a hop
+        self.show()
 
     @rule(vx=st.floats(-3000, 3000))
     def released(self, vx: float) -> None:
         self.brain.released(vx)
         self.held = False
+        self.interrupted = None  # and so does a fall
+        self.show()
 
     @rule()
     def landed(self) -> None:
         self.brain.landed()
+        self.show()
 
     @rule()
     def clicked(self) -> None:
+        before = snapshot(self.brain)
         self.brain.clicked()
+        if self.brain.state is State.HAPPY and before[0] is not State.HAPPY:
+            self.interrupted = before
+        self.show()
 
     @invariant()
     def the_animation_is_one_the_sheet_has(self) -> None:
         assert self.brain.animation in SHEET.animations
+
+    @invariant()
+    def happy_only_while_the_hop_plays(self) -> None:
+        # Once `happy` has finished, the brain has left HAPPY, so no sequence of clicks leaves it stuck.
+        if self.brain.state is State.HAPPY:
+            assert self.animator.animation.name == "happy"
+            assert not self.animator.finished
 
     @invariant()
     def held_only_between_a_grab_and_the_next_release(self) -> None:

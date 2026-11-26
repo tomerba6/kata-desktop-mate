@@ -7,10 +7,18 @@ becomes a nap, and a nap always ends in IDLE. update(dt) carries leftover time i
 state, so however the time is cut into steps, no state outlasts its range and the outcome is the
 same.
 
-Two more states come from outside, through the window's events: grabbed() goes to HELD from
+Three more states come from outside, through the window's events: grabbed() goes to HELD from
 anything, released(vx) to FALL (a floor dropping away under Kata counts too), and landed() back to
-IDLE. A release with enough sideways speed turns Kata to face the way it flies. clicked() wakes a
-sleeping Kata; otherwise it only restarts the quiet spell, until milestone 4 gives it a hop.
+IDLE. A release with enough sideways speed turns Kata to face the way it flies.
+
+clicked() wakes a sleeping Kata into IDLE. Idling, walking or sitting, Kata hops instead: HAPPY,
+on the spot, until the window reports with finished() that the `happy` animation has played. Then
+Kata goes back to what the click interrupted, with the time it had left. A click while Kata hops,
+is held or falls is ignored, and a grab or a fall mid-hop cancels the hop.
+
+HELD, FALL and HAPPY end on the window's word, not on the clock. While Kata is in one of them, no
+time passes for the brain, the quiet spell included, and nothing is drawn from the random.Random,
+so a hop leaves what Kata does afterwards as it would have been.
 
 While walking, Kata heads left or right by a coin and turns at either end of its walking range, so
 a walk that starts at an end heads away from it. The window moves the body at walk_velocity.
@@ -34,8 +42,13 @@ class State(Enum):
     WALK = "walk"
     SIT = "sit"
     SLEEP = "sleep"
+    HAPPY = "happy"
     HELD = "held"
     FALL = "fall"
+
+
+# The states that last until the window ends them, rather than for a time drawn from a range.
+UNTIMED = (State.HAPPY, State.HELD, State.FALL)
 
 
 class Facing(Enum):
@@ -63,7 +76,7 @@ class BehaviourConfig:
     after_sit: Weights = ((State.IDLE, 1.0), (State.WALK, 2.0))
 
     def time_range(self, state: State) -> tuple[float, float]:
-        """How long a stay in `state` may last. HELD and FALL last until the window says."""
+        """How long a stay in `state` may last. HAPPY, HELD and FALL last until the window says."""
         ranges = {
             State.IDLE: self.idle_time,
             State.WALK: self.walk_time,
@@ -78,12 +91,18 @@ class BehaviourConfig:
 
 
 class Brain:
+    # What Kata is doing, and how far into it: set by _enter(), and put back by finished().
+    _state: State
+    _elapsed: float
+    _duration: float
+
     def __init__(self, config: BehaviourConfig, walk_speed: float, rng: random.Random) -> None:
         self._config = config
         self._speed = walk_speed
         self._rng = rng
         self._facing = Facing.RIGHT
         self._quiet = 0.0  # seconds since the last click, grab or nap
+        self._interrupted: tuple[State, float, float] | None = None  # what a hop goes back to
         self._enter(State.IDLE)
 
     @property
@@ -116,14 +135,14 @@ class Brain:
 
     @property
     def time_left(self) -> float:
-        """Seconds until the current state ends; infinite while held or falling."""
+        """Seconds until the current state ends; infinite while hopping, held or falling."""
         return self._duration - self._elapsed
 
     def update(self, dt: float, x: float, walk_range: tuple[float, float]) -> None:
         """Move on by dt seconds, with the feet at column x and the walking range's two ends."""
         if dt < 0:
             raise ValueError(f"dt must not be negative, got {dt}")
-        if self._state in (State.HELD, State.FALL):
+        if self._state in UNTIMED:
             return
         left, right = walk_range
         while True:
@@ -157,10 +176,21 @@ class Brain:
             self._enter(State.IDLE)
 
     def clicked(self) -> None:
-        """A click on Kata: it wakes a nap, and restarts the quiet spell either way."""
+        """A click on Kata: it wakes a nap, or else hops. Either way the quiet spell restarts."""
+        if self._state in UNTIMED:
+            return  # hopping already, held or falling: the click means nothing
         self._quiet = 0.0
         if self._state is State.SLEEP:
             self._enter(State.IDLE)
+        else:
+            self._interrupted = (self._state, self._elapsed, self._duration)
+            self._enter(State.HAPPY)
+
+    def finished(self) -> None:
+        """The one-shot animation has played to its end. Ends a hop; means nothing otherwise."""
+        if self._state is State.HAPPY:
+            assert self._interrupted is not None  # every hop starts by keeping what it interrupted
+            self._state, self._elapsed, self._duration = self._interrupted
 
     def _next(self) -> None:
         """The current state's time is up: pick what follows."""
@@ -180,10 +210,10 @@ class Brain:
                 self._facing = Facing.RIGHT if self._rng.random() < 0.5 else Facing.LEFT
 
     def _enter(self, state: State) -> None:
-        """Start `state` afresh, with a time drawn from its range (none for HELD and FALL)."""
+        """Start `state` afresh, with a time drawn from its range (none for the untimed states)."""
         self._state = state
         self._elapsed = 0.0
-        if state in (State.HELD, State.FALL):
+        if state in UNTIMED:
             self._duration = math.inf
         else:
             self._duration = self._rng.uniform(*self._config.time_range(state))

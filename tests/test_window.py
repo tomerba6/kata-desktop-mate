@@ -200,8 +200,8 @@ def test_a_press_and_release_in_place_is_a_click_and_kata_stays_put(kata: Rig) -
     kata.run(30)
     assert kata.clicks == 1
     assert kata.window.pos() == start
-    assert kata.animation() == "idle"
-    assert [event for event, _ in kata.logged] == ["click"]
+    assert kata.animation() == "happy"  # the hop, which lasts longer than 30 ticks
+    assert kata.others() == ["click"]
 
 
 def test_a_drop_falls_straight_down_lands_on_the_floor_then_plays_idle(kata: Rig) -> None:
