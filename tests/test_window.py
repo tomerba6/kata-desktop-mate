@@ -12,10 +12,13 @@ between the area and the window, shows.
 Kata's brain stays idle unless a test gives it other behaviour (STAY_IDLE), so wandering doesn't
 move Kata under the tests about carrying it. A walk's direction is a coin, so the walking tests
 start Kata at an end of its range, where it heads away whatever the coin says.
+
+A click hops Kata for as long as the `happy` animation lasts, read from the sheet (HOP_TICKS).
 """
 
 from __future__ import annotations
 
+import math
 import random
 from collections.abc import Callable, Iterator
 
@@ -46,6 +49,8 @@ FLOOR = 720
 START = (611.4, 720.0)  # Kata's feet, standing on the floor
 WALK_ENDS = feet_bounds(AREA, SHEET, SCALE)  # the feet walk from 109 to 1245
 TICK = 1 / 64
+HOP = SHEET.animations["happy"]
+HOP_TICKS = math.ceil(HOP.frames / HOP.fps / TICK)  # 43 today: 8 frames at 12 fps
 LEFT = Qt.MouseButton.LeftButton
 RIGHT = Qt.MouseButton.RightButton
 NO_BUTTON = Qt.MouseButton.NoButton
@@ -133,6 +138,16 @@ class Rig:
     def release(self, at: Point, button: Qt.MouseButton = LEFT) -> None:
         self._send(QEvent.Type.MouseButtonRelease, at, button, NO_BUTTON)
 
+    def double_click(self, at: Point) -> None:
+        """What Qt sends in place of the press, for the second of two quick clicks."""
+        self._send(QEvent.Type.MouseButtonDblClick, at, LEFT, LEFT)
+
+    def click(self) -> None:
+        """A quick click on the scruff: a press, then a release in the same place."""
+        at = self.scruff()
+        self.press(at)
+        self.release(at)
+
     def _send(self, kind: QEvent.Type, at: Point, button: Qt.MouseButton, buttons: Qt.MouseButton) -> None:
         local = QPointF(at[0] - self.window.x(), at[1] - self.window.y())
         event = QMouseEvent(kind, local, QPointF(*at), button, buttons, Qt.KeyboardModifier.NoModifier)
@@ -201,6 +216,9 @@ def test_a_press_and_release_in_place_is_a_click_and_kata_stays_put(kata: Rig) -
     assert kata.clicks == 1
     assert kata.window.pos() == start
     assert kata.animation() == "happy"  # the hop, which lasts longer than 30 ticks
+    kata.run(HOP_TICKS - 30)
+    assert kata.window.pos() == start
+    assert kata.animation() == "idle"
     assert kata.others() == ["click"]
 
 
@@ -443,8 +461,18 @@ def test_a_click_on_a_sleeping_kata_wakes_it(make: Callable[..., Rig]) -> None:
     kata.press((x, y))
     kata.run(1)
     kata.release((x, y))
-    assert kata.animation() == "idle"
+    assert kata.animation() == "idle"  # awake, with no hop
     assert kata.clicks == 1
+    kata.run(1)
+    kata.click()  # the next click hops
+    assert kata.animation() == "happy"
+    kata.run(HOP_TICKS)
+    assert kata.animation() == "idle"
+    assert kata.states()[-3:] == [
+        ("sleep", "idle", "right"),
+        ("idle", "happy", "right"),
+        ("happy", "idle", "right"),
+    ]
 
 
 def test_a_floor_dropping_away_drops_kata_and_it_lands_idle(kata: Rig) -> None:
@@ -468,17 +496,102 @@ def test_each_change_of_state_gets_a_log_line(kata: Rig) -> None:
     assert grabbed["feet"] == (611.4, 420.0)  # where the scruff put the feet
 
 
+# --- A click: a hop ---------------------------------------------------------------------------
+
+
+def test_a_click_gives_one_hop_on_the_spot_then_kata_stands_idle_again(kata: Rig) -> None:
+    start = kata.window.pos()
+    kata.click()
+    assert (kata.animation(), kata.window.animator.frame) == ("happy", 0)
+    for _ in range(HOP_TICKS - 1):
+        kata.run(1)
+        assert (kata.animation(), kata.window.pos()) == ("happy", start)
+    kata.run(1)  # the hop's last frame has had its time
+    assert (kata.animation(), kata.window.pos()) == ("idle", start)
+    assert kata.logged[0][0] == "click"
+    assert kata.states() == [("idle", "happy", "right"), ("happy", "idle", "right")]
+
+
+def test_a_click_mid_walk_hops_on_the_spot_then_walks_on_the_same_way(make: Callable[..., Rig]) -> None:
+    kata = make(behaviour=WALK_SOON, start=(WALK_ENDS.left, FLOOR))
+    kata.run(32 + 16)  # a quarter of a second into a walk to the right
+    assert (kata.animation(), kata.facing()) == ("walk", Facing.RIGHT)
+    x, where = kata.window.body.x, kata.window.pos()
+    kata.click()
+    kata.run(HOP_TICKS)
+    assert (kata.animation(), kata.facing()) == ("walk", Facing.RIGHT)
+    assert (kata.window.body.x, kata.window.pos()) == (x, where)  # it didn't move while it hopped
+    kata.run(64)
+    assert kata.window.body.x == x + SPEED  # and walks on at the sheet's speed
+
+
+def test_facing_left_the_hop_is_drawn_mirrored(make: Callable[..., Rig]) -> None:
+    kata = make(behaviour=WALK_SOON, start=(WALK_ENDS.right, FLOOR))  # its walk heads left
+    kata.run(32 + 16)
+    assert kata.facing() is Facing.LEFT
+    kata.click()
+    kata.run(HOP_TICKS // 2)
+    assert (kata.animation(), kata.facing()) == ("happy", Facing.LEFT)
+    assert kata.drawn_from(Facing.LEFT)
+    kata.run(HOP_TICKS - HOP_TICKS // 2)
+    assert (kata.animation(), kata.facing()) == ("walk", Facing.LEFT)
+
+
+def test_ten_fast_clicks_never_leave_kata_stuck_or_stacked(kata: Rig) -> None:
+    for _ in range(10):
+        kata.click()
+        kata.run(10)  # 6.4 clicks a second
+    kata.run(HOP_TICKS)
+    assert kata.animation() == "idle"
+    assert kata.others() == ["click"] * 10
+    # The clicks at ticks 0 and 50 hop; the other eight land mid-hop and are ignored.
+    assert kata.states() == [("idle", "happy", "right"), ("happy", "idle", "right")] * 2
+
+
+def test_two_quick_clicks_count_as_two_though_qt_makes_the_second_a_double_click(kata: Rig) -> None:
+    # Observed offscreen through the window's QWindow (2026-11-26): for two quick clicks Qt sends
+    # press, release, double-click, release. Qt's default double-click handler calls the press
+    # handler, so the second click still counts.
+    at = kata.scruff()
+    kata.press(at)
+    kata.release(at)
+    kata.double_click(at)
+    kata.release(at)
+    assert kata.others() == ["click", "click"]
+    assert kata.clicks == 2
+
+
+def test_a_click_while_falling_changes_nothing(kata: Rig) -> None:
+    above = lift(kata, 300)
+    kata.run(32)
+    kata.release(above)
+    kata.run(10)
+    before = kata.states()
+    kata.click()
+    assert kata.others()[-1] == "click"
+    assert kata.states() == before  # no state line: the brain ignored it
+    kata.run(22)  # the 32nd tick of the fall, as with no click
+    assert (kata.window.pos(), kata.animation()) == (on_floor(611), "idle")
+
+
 @pytest.mark.slow
-def test_ten_minutes_alone_with_the_app_s_own_behaviour(make: Callable[..., Rig]) -> None:
-    # The smoke test: the real window, brain, body and animator, wired as app.py wires them.
+def test_ten_minutes_of_the_app_s_own_behaviour_clicked_at_first(make: Callable[..., Rig]) -> None:
+    # The smoke test: the real window, brain, body and animator, wired as app.py wires them. Kata
+    # is clicked every 3 s for two minutes, then left alone for eight, long enough to nap.
     kata = make(behaviour=BehaviourConfig(), seed=7)
+    longest_hop = math.ceil(HOP.frames / HOP.fps * 16)  # in ticks of 1/16 s
     columns: set[int] = set()
-    for _ in range(10 * 60 * 16):  # ticks of 1/16 s
+    hopping = 0  # ticks in a row spent hopping
+    for tick in range(10 * 60 * 16):  # ticks of 1/16 s
+        if tick < 2 * 60 * 16 and tick % (3 * 16) == 0:
+            kata.click()
         kata.now += 1 / 16
         kata.window.tick()
         where = kata.window.pos()
         assert AREA.x <= where.x() and where.x() + kata.window.width() <= AREA.x + AREA.w
         assert AREA.y <= where.y() and where.y() + SHEET.ground_y * SCALE <= FLOOR
         columns.add(where.x())
+        hopping = hopping + 1 if kata.animation() == "happy" else 0
+        assert hopping <= longest_hop, f"stuck hopping, {tick / 16:.3f} s in"
     assert len(columns) > 1  # it wandered
-    assert {"walk", "sit", "sleep"} <= {to for _, to, _ in kata.states()}
+    assert {"walk", "sit", "sleep", "happy"} <= {to for _, to, _ in kata.states()}

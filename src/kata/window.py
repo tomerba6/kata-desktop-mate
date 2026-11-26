@@ -11,8 +11,10 @@ the body lands or its floor drops away. Then it moves the window when the feet's
 changes, plays the brain's animation facing the brain's way, and advances the animator,
 repainting only when the frame changes. A timer at the frame rate itself would fire right on the
 frame boundaries, and Windows firing it a few milliseconds early or late showed a frame twice and
-then skipped one. The desktop is read on every tick, so a taskbar that appears or moves is picked
-up. Kata walks on the screen it stands on, and no further.
+then skipped one. When a one-shot animation (the hop) has had its last frame's time, the brain
+hears finished(), and what it goes back to starts playing on the same tick. The desktop is read
+on every tick, so a taskbar that appears or moves is picked up. Kata walks on the screen it
+stands on, and no further.
 
 Facing left, the window draws the frames flipped left to right (kata.sprites.mirrored), built
 once. The flip is about the feet point, so a turn never moves Kata sideways.
@@ -21,7 +23,10 @@ The mouse. A left press starts a Grip (kata.drag). Once it is a drag, the scruff
 anchor) follows the pointer, and the window moves on each mouse event so it doesn't lag a tick.
 Facing left, the grip is the flipped frame's scruff. The brain hears grabbed() then, released(vx)
 when Kata is thrown at the pointer's speed, and clicked() for a press that never became a drag,
-which also emits `clicked`. Mouse tracking is on while the button is down: Qt delivers a move with
+which also emits `clicked`. The brain decides what a click means: a hop, a wake from a nap, or
+nothing while Kata falls. Of two quick clicks, Qt sends the second as a double-click in place of
+its press; QWidget's default handler passes that on to mousePressEvent, so it counts as a click
+like the first. Mouse tracking is on while the button is down: Qt delivers a move with
 no button down only to a window that tracks the mouse, and such a move means the release went to
 another window, so it counts as the release. Right-click opens a menu with Quit, the way out until
 the tray menu arrives in milestone 5.
@@ -149,6 +154,9 @@ class PetWindow(QWidget):
         self.follow_brain()
         shown = self.animator.frame
         self.animator.advance(dt)
+        if self.animator.finished:
+            self.think(self.brain.finished)  # the hop is over: back to what it interrupted
+            self.follow_brain()  # on this tick, so the hop's last frame isn't held over
         if self.animator.frame != shown:
             self.update()  # ask Qt to repaint soon; never call paintEvent yourself
 
