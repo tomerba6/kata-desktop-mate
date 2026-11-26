@@ -17,7 +17,7 @@ Kata is a pixel-art fox that lives on the Windows desktop. This brief is the roa
 - [x] M0 Run the starter
 - [x] M1 Kata on the desktop
 - [x] M2 Pick up, carry, drop
-- [ ] M3 Wander, sit, sleep
+- [x] M3 Wander, sit, sleep
 - [ ] M4 React to a click
 - [ ] M5 Tray menu and settings
 - [ ] M6 Start with Windows
@@ -41,7 +41,7 @@ If a session gets long, start a new one; the plan file carries the state.
 
 ## What already exists
 
-See the "What's here" table in [README.md](README.md). Sprite facts (frame counts, fps, ground line, the `held` anchor) are in `src/kata/assets/kata.json`; the file layout and architecture rules are in `CLAUDE.md`.
+See the "What's here" table in [README.md](README.md). Sprite facts (frame counts, fps, ground line, the `held` anchor, the walk's stride) are in `src/kata/assets/kata.json`; the file layout and architecture rules are in `CLAUDE.md`.
 
 ## Milestones
 
@@ -76,28 +76,7 @@ Done. The plan, with its decisions, what was measured on the way and what was le
 
 **Goal:** left alone, Kata behaves like a pet.
 
-**Build**
-
-- `Brain` in `brain.py`: states `IDLE`, `WALK`, `SIT`, `SLEEP`, plus `HELD` and `FALL` driven from outside. `update(dt)` counts down the current state and picks the next with weighted random choice from an injected `random.Random`. It exposes `animation`, `facing` and `walk_speed`.
-- Events from the window: `grabbed()` goes to `HELD`, `released()` to `FALL`, `landed()` to `IDLE`.
-- Walking speed comes from the sprite. The walk cycle's stride is 12 sprite pixels per loop: a planted paw slides back 6 pixels in half a loop (`frames_walk` in `tools/make_sprites.py`). At 8 frames and 10 fps that is 15 sprite pixels per second, so walking at stride × fps ÷ frames × scale screen pixels per second keeps the paws from sliding. In `tools/make_sprites.py`, name the stride as one constant, draw the paws with it and write it as `stride` in the walk entry of `kata.json`. `read_sheet_info()` reads it, and `app.py` passes the speed to the brain as a number. At either end of the floor Kata turns around.
-- Facing left uses mirrored frames built once at load: `pixmap.transformed(QTransform().scale(-1, 1))`.
-- After a long quiet spell Kata goes from `SIT` to `SLEEP`. Any click or grab wakes it.
-- All timings and weights live in one `BehaviourConfig` dataclass.
-- Under `KATA_LOG`, log each state change with its time.
-
-**Check by hand**
-
-- Leave it for five minutes: it walks both ways, sits, naps with Zs, wakes, and never leaves the screen.
-- Paws do not slide while walking.
-
-**Tests**
-
-- Every transition, turning at the edges, wake on interaction.
-- Seeded simulated runs, hundreds of seeds rather than one, ten simulated minutes each: at every step Kata stays inside the bounds and no state outlasts the longest time `BehaviourConfig` allows it, and across the runs every state is visited. A failure prints its seed, so it reproduces exactly.
-- A headless smoke test wires `Brain`, `Body` and `Animator` together the way `PetWindow.tick` does and runs a simulated session: nothing raises and Kata stays inside the bounds. M7 adds platforms to it.
-- `read_sheet_info()` returns the walk `stride`, and the walking speed works out to 15 × scale with the current sheet.
-- A Hypothesis stateful test drives `Brain` with random sequences of `update(dt)`, `grabbed()`, `released()` and `landed()`. After every step, the animation it asks for is one the sheet has, and it is in `HELD` only between a `grabbed()` and the next `released()`.
+Done. The plan, with its decisions, what was measured on the way and what was left open (two real screens, unchecked): [docs/plans/2026-11-25-m3-wander.md](docs/plans/2026-11-25-m3-wander.md). The smoke test M7 extends is the ten-minute one in `tests/test_window.py`, which drives the real `PetWindow`.
 
 ### M4 React to a click
 
@@ -117,7 +96,7 @@ Done. The plan, with its decisions, what was measured on the way and what was le
 **Tests**
 
 - `HAPPY` returns to the interrupted state; clicks in `HELD` and `FALL` change nothing; click during `SLEEP` wakes.
-- The M3 stateful test also sends `clicked()`: whatever the sequence of clicks, the brain leaves `HAPPY` once `happy` finishes, so no sequence leaves it stuck.
+- The M3 stateful test (`tests/test_brain.py`) already sends `clicked()`; it also checks that, whatever the sequence of clicks, the brain leaves `HAPPY` once `happy` finishes, so no sequence leaves it stuck.
 
 ### M5 Tray menu and settings
 

@@ -13,10 +13,12 @@ from hypothesis import strategies as st
 from kata.geometry import (
     Bounds,
     Rect,
+    area_under,
     feet_bounds,
     floor_under,
     floor_y,
     grip_feet,
+    mirrored_anchor,
     start_feet,
     window_origin,
 )
@@ -139,6 +141,32 @@ def test_held_the_anchor_pixel_is_under_the_pointer(
     assert py - top == ay * scale + scale // 2
 
 
+def test_facing_left_the_scruff_is_the_mirrored_pixel() -> None:
+    # Today's sheet: 48 columns, so held's anchor column 22 becomes 47 - 22 = 25, the same row.
+    sheet = read_sheet_info()
+    assert mirrored_anchor((22, 21), sheet) == (25, 21)
+
+
+@given(grips())
+def test_mirroring_the_anchor_twice_gives_it_back(grip: tuple[SheetInfo, tuple[int, int]]) -> None:
+    sheet, anchor = grip
+    assert mirrored_anchor(mirrored_anchor(anchor, sheet), sheet) == anchor
+
+
+@given(grips(), st.integers(min_value=1, max_value=6))
+def test_the_mirrored_anchor_s_block_is_the_anchor_s_block_flipped_across_the_window(
+    grip: tuple[SheetInfo, tuple[int, int]], scale: int
+) -> None:
+    # Flipping the frame sends window column c to width - 1 - c, so the scale x scale block of
+    # the anchor pixel must land exactly on the block of the mirrored anchor, row unchanged.
+    sheet, (ax, ay) = grip
+    width = sheet.frame_w * scale
+    mx, my = mirrored_anchor((ax, ay), sheet)
+    flipped = sorted(width - 1 - c for c in range(ax * scale, (ax + 1) * scale))
+    assert flipped == list(range(mx * scale, (mx + 1) * scale))
+    assert my == ay
+
+
 # --- How far the feet may go ---------------------------------------------------------------------
 
 
@@ -230,3 +258,37 @@ def test_equally_near_screens_both_count() -> None:
 @given(st.floats(-20_000, 20_000), st.floats(-20_000, 20_000), st.lists(areas, min_size=1, max_size=4))
 def test_the_floor_is_always_one_of_the_screens_floors(x: float, y: float, screens: list[Rect]) -> None:
     assert floor_under((x, y), screens) in {floor_y(s) for s in screens}
+
+
+# --- Which screen Kata walks on ------------------------------------------------------------------
+
+
+def test_side_by_side_the_screen_under_the_feet_is_the_one_whose_floor_they_get() -> None:
+    right = Rect(1920, 0, 2560, 1440)
+    assert area_under((1000, 500), [LEFT, right]) == LEFT
+    assert area_under((1919.5, 500), [LEFT, right]) == LEFT
+    assert area_under((1920, 500), [LEFT, right]) == right
+    assert area_under((1000, 1300), [LEFT, right]) == LEFT  # below the short one's floor
+
+
+def test_stacked_the_screen_under_the_feet_is_the_first_floor_at_or_below() -> None:
+    below = Rect(0, 1080, 1920, 1080)
+    assert area_under((500, 300), [below, LEFT]) == LEFT
+    assert area_under((500, 1080), [below, LEFT]) == LEFT
+    assert area_under((500, 1500), [below, LEFT]) == below
+
+
+def test_over_no_screen_the_nearest_one_is_under_the_feet() -> None:
+    assert area_under((1099.5, 100), [NARROW, OFFSET]) == NARROW
+    assert area_under((1100.5, 100), [NARROW, OFFSET]) == OFFSET
+
+
+def test_of_equally_near_screens_the_one_with_the_first_floor_at_or_below_is_under() -> None:
+    farther = Rect(1199, 0, 1000, 600)
+    assert area_under((1099.5, 100), [NARROW, farther]) == farther
+    assert area_under((1099.5, 700), [NARROW, farther]) == NARROW
+
+
+@given(st.floats(-20_000, 20_000), st.floats(-20_000, 20_000), st.lists(areas, min_size=1, max_size=4))
+def test_the_screen_under_the_feet_is_one_of_the_screens(x: float, y: float, screens: list[Rect]) -> None:
+    assert area_under((x, y), screens) in screens

@@ -106,6 +106,54 @@ def test_a_floor_that_drops_makes_a_standing_body_fall_and_land() -> None:
     assert body.y == 1100.0
 
 
+# --- Walking ----------------------------------------------------------------------------------
+
+
+def test_a_standing_body_walks_at_its_speed_either_way() -> None:
+    body = Body(300.5, 1000.0, CONFIG)
+    assert not body.step(0.25, 1000.0, WIDE, walk=45.0)
+    assert (body.x, body.y) == (311.75, 1000.0)  # 45 per s for 0.25 s
+    assert not body.step(0.5, 1000.0, WIDE, walk=-45.0)
+    assert (body.x, body.y) == (289.25, 1000.0)  # back 22.5
+    assert not body.airborne
+
+
+def test_walking_stops_at_the_ends_of_the_bounds() -> None:
+    body = Body(990.25, 1000.0, CONFIG)
+    body.step(0.5, 1000.0, WIDE, walk=45.0)  # would reach 1012.75
+    assert body.x == 1000.0
+    body.step(0.5, 1000.0, WIDE, walk=45.0)  # still pushing: it stays at the end
+    assert body.x == 1000.0
+    body = Body(10.25, 1000.0, CONFIG)
+    body.step(0.5, 1000.0, WIDE, walk=-45.0)  # would reach -12.25
+    assert body.x == 0.0
+
+
+def test_a_standing_body_outside_narrowed_bounds_is_moved_inside() -> None:
+    # The screen got smaller under Kata, or it stands on a screen narrower than the last.
+    body = Body(1100.5, 1000.0, CONFIG)
+    body.step(0.1, 1000.0, WIDE)
+    assert body.x == 1000.0
+    body = Body(-60.5, 1000.0, CONFIG)
+    body.step(0.1, 1000.0, WIDE)
+    assert body.x == 0.0
+
+
+def test_a_floor_dropping_away_while_walking_makes_it_fall_straight_down() -> None:
+    body = Body(300.5, 1000.0, CONFIG)
+    body.step(0.1, 1100.0, WIDE, walk=45.0)
+    assert body.airborne
+    assert 1000.0 < body.y < 1100.0
+    assert (body.x, body.vx) == (300.5, 0.0)  # the walk doesn't carry into the fall
+
+
+def test_walking_does_nothing_in_the_air() -> None:
+    body = falling(x=500.5)
+    body.throw(20.0, 0.0)
+    body.step(0.25, FAR, WIDE, walk=45.0)
+    assert body.x == 505.5  # the throw's 20 per s only
+
+
 def test_a_side_edge_stops_the_sideways_speed_only() -> None:
     body = falling(x=990.0, y=100.0)
     body.throw(300.0, 0.0)
@@ -188,6 +236,19 @@ def test_the_feet_never_leave_the_bounds_or_go_below_the_floor(
         body.step(dt, floor, bounds)
         assert bounds.left <= body.x <= bounds.right
         assert bounds.top <= body.y <= floor
+
+
+@given(scenes(), st.lists(st.tuples(st.floats(0, 0.5), st.floats(-5000, 5000)), max_size=50))
+def test_walking_keeps_the_feet_on_the_floor_and_inside_the_bounds(
+    scene: tuple[Body, float, Bounds], walks: list[tuple[float, float]]
+) -> None:
+    body, floor, bounds = scene
+    standing = Body(body.x, floor, CONFIG)
+    for dt, speed in walks:
+        assert not standing.step(dt, floor, bounds, walk=speed)
+        assert bounds.left <= standing.x <= bounds.right
+        assert standing.y == floor
+        assert not standing.airborne
 
 
 @given(scenes(), steps)

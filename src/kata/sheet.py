@@ -22,6 +22,7 @@ class AnimationInfo:
     fps: int  # playback speed
     loop: bool  # False: play once, then the caller decides what comes next
     anchor: tuple[int, int] | None = None  # "held" only: where the cursor grips, in frame pixels
+    stride: int | None = None  # "walk" only: sprite pixels a planted paw slides back per loop
 
     @property
     def frame_ms(self) -> int:
@@ -49,6 +50,7 @@ def read_sheet_info(name: str = "kata") -> SheetInfo:
             fps=a["fps"],
             loop=a["loop"],
             anchor=tuple(a["anchor"]) if "anchor" in a else None,
+            stride=a.get("stride"),
         )
         for anim_name, a in raw["animations"].items()
     }
@@ -59,3 +61,15 @@ def read_sheet_info(name: str = "kata") -> SheetInfo:
         ground_y=raw["ground_y"],
         animations=animations,
     )
+
+
+def walk_speed(sheet: SheetInfo, scale: int) -> float:
+    """How fast Kata walks, in screen pixels per second, so its paws don't slide.
+
+    A planted paw slides back `stride` sprite pixels per loop of the walk, so the body must move
+    forward as far: stride x fps / frames sprite pixels a second, times the scale.
+    """
+    walk = sheet.animations["walk"]
+    if walk.stride is None:
+        raise ValueError("the sprite sheet gives `walk` no stride, so there is no speed to walk at")
+    return walk.stride * walk.fps / walk.frames * scale

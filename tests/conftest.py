@@ -10,12 +10,43 @@ failure saved in .hypothesis/ and tried first next time. CI runs `pytest --hypot
 which makes the inputs the same on every run so a CI result can be repeated, drops the time
 limit per example (shared runners are slow and uneven), and prints a blob that reproduces a
 failure exactly.
+
+The `app` fixture is the one QApplication of the run: Qt allows one per process, and windows and
+pixmaps need it. It imports Qt only when a test asks for it.
+
+Slow tests run last. A test marked `slow` (most of a second, such as the brain's seeded runs) is
+moved to the end of the run, every other test keeping its order. The mutation run stops each
+mutant's run at its first failure (`pytest -x`), so a mutant that a quick test catches never waits
+for the slow ones. Every test still runs.
 """
 
-import os
+from __future__ import annotations
 
+import os
+from typing import TYPE_CHECKING
+
+import pytest
 from hypothesis import settings
+
+if TYPE_CHECKING:
+    from PySide6.QtWidgets import QApplication
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 settings.register_profile("ci", derandomize=True, deadline=None, print_blob=True)
+
+
+@pytest.fixture(scope="session")
+def app() -> QApplication:
+    from PySide6.QtWidgets import QApplication
+
+    existing = QApplication.instance()
+    if existing is None:
+        return QApplication([])
+    assert isinstance(existing, QApplication)
+    return existing
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Move the tests marked slow to the end; the sort is stable, so each group keeps its order."""
+    items.sort(key=lambda item: item.get_closest_marker("slow") is not None)
