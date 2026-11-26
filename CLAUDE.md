@@ -47,7 +47,7 @@ src/kata/
   sprites.py         cuts kata.png into QPixmap frames (exists)
   body.py            feet, velocity, gravity, landing (exists)      no Qt
   drag.py            click or drag, and the release speed (exists)  no Qt
-  brain.py           behaviour state machine                        no Qt
+  brain.py           behaviour state machine (exists)               no Qt
   platforms.py       floors and window tops Kata can stand on       no Qt
   geometry.py        placement: floors, grip, bounds (exists)       no Qt
   settings.py        load and save user settings                    no Qt

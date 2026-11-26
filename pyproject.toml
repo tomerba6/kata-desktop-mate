@@ -39,6 +39,7 @@ kata = ["assets/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: takes most of a second; tests/conftest.py runs these after all the others"]
 
 [tool.coverage.run]
 branch = true
@@ -50,6 +51,7 @@ source = ["kata"]
 include = [
     "*/kata/animator.py",
     "*/kata/body.py",
+    "*/kata/brain.py",
     "*/kata/drag.py",
     "*/kata/geometry.py",
     "*/kata/sheet.py",

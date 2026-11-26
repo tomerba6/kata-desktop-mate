@@ -18,6 +18,7 @@
 module-path = [
     "src/kata/animator.py",
     "src/kata/body.py",
+    "src/kata/brain.py",
     "src/kata/drag.py",
     "src/kata/geometry.py",
     "src/kata/sheet.py",
